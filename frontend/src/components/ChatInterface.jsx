@@ -54,15 +54,7 @@ function ChatInterface() {
           content: msg.content
         }));
 
-      // Use EventSource for SSE streaming
-      const eventSource = new EventSource(
-        `${API_BASE_URL}/tourism/chat/stream?${new URLSearchParams({
-          query: queryText,
-          conversation_history: JSON.stringify(conversationHistory)
-        })}`
-      );
-
-      // Use fetch with streaming instead
+      // Use fetch with streaming for SSE
       const response = await fetch(`${API_BASE_URL}/tourism/chat/stream`, {
         method: 'POST',
         headers: {
