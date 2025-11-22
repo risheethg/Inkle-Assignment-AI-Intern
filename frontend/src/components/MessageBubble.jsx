@@ -16,13 +16,13 @@ function MessageBubble({ message, onSuggestionClick }) {
 
   const handleLearnMore = (place) => {
     if (onSuggestionClick) {
-      onSuggestionClick(`Tell me more about ${place}`);
+      onSuggestionClick(`What can you tell me about ${place}? I'd like to know details about this specific attraction, like opening hours, entry fees, what makes it special, and visitor tips.`);
     }
   };
 
   const handleExploreLocation = (location) => {
     if (onSuggestionClick) {
-      onSuggestionClick(`What are the best things to do in ${location}?`);
+      onSuggestionClick(`What are the top tourist attractions and things to do in ${location}? Please provide a list of must-visit places.`);
     }
   };
 

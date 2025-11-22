@@ -22,6 +22,7 @@ class TourismState(TypedDict):
     query: str
     conversation_history: list[dict] | None  # Store previous conversation
     location: str | None
+    main_location: str | None  # The primary city/region being discussed (preserved across follow-up queries)
     needs_weather: bool
     needs_places: bool
     query_type: str | None  # 'detailed_places', 'simple', or 'weather_focused'
@@ -93,24 +94,30 @@ class LangGraphTourismAgent:
 {context}
 Current Query: "{state['query']}"
 
-Important: If the current query refers to previous context (e.g., "that place", "there", "it"), extract the location from the conversation history above.
+Important: 
+1. If the current query refers to previous context (e.g., "that place", "there", "it"), extract the location from the conversation history above.
+2. Distinguish between "asking for information ABOUT a specific place" vs "planning a trip to multiple places"
+3. Distinguish between a CITY/REGION (e.g., "Tokyo", "Paris", "New York") vs a SPECIFIC ATTRACTION (e.g., "Tokyo Tower", "Eiffel Tower", "Statue of Liberty")
 
 Return a JSON object with:
-- location: The city/place name mentioned or referenced (string or null)
+- location: The specific place/attraction mentioned (can be city or attraction name)
+- is_city: true if location is a city/town/region, false if it's a specific attraction/landmark
 - needs_weather: true if asking about weather/temperature/climate
 - needs_places: true if asking about places to visit/attractions/things to do
 - query_type: Classify the query as one of:
-  * "detailed_places" - User asks about places/attractions/spots/things to do/visit (keywords: places, attractions, visit, spots, things to do, tourist, sights, landmarks)
+  * "simple" - Asking for INFORMATION about a specific place (e.g., "Tell me about X", "What is X", "Details about X", "Opening hours of X")
+  * "detailed_places" - User wants a LIST of places/attractions/spots to visit (keywords: best places, top attractions, things to do, where to go)
   * "weather_focused" - ONLY if asking JUST about weather with no places mentioned
-  * "simple" - Everything else (general questions, trip planning, casual queries)
 
-IMPORTANT: If needs_places is true, query_type should be "detailed_places"
+IMPORTANT: 
+- "Tell me about [specific attraction]" = {{"location": "Attraction Name", "is_city": false, "query_type": "simple"}}
+- "What are the best places in [city]" = {{"location": "City", "is_city": true, "query_type": "detailed_places"}}
 
 Examples:
-{{"location": "Paris", "needs_weather": false, "needs_places": true, "query_type": "detailed_places"}}
-{{"location": "Tokyo", "needs_weather": true, "needs_places": false, "query_type": "weather_focused"}}
-{{"location": "London", "needs_weather": true, "needs_places": false, "query_type": "weather_focused"}}
-{{"location": "Barcelona", "needs_weather": false, "needs_places": true, "query_type": "detailed_places"}}
+{{"location": "Tokyo Tower", "is_city": false, "needs_weather": false, "needs_places": false, "query_type": "simple"}}
+{{"location": "Paris", "is_city": true, "needs_weather": false, "needs_places": true, "query_type": "detailed_places"}}
+{{"location": "Tokyo", "is_city": true, "needs_weather": true, "needs_places": false, "query_type": "weather_focused"}}
+{{"location": "Eiffel Tower", "is_city": false, "needs_weather": false, "needs_places": false, "query_type": "simple"}}
 
 Return ONLY the JSON, no other text."""
 
@@ -143,6 +150,16 @@ Return ONLY the JSON, no other text."""
             places_keywords = ['place', 'attraction', 'visit', 'spot', 'thing', 'see', 'do', 'tourist', 'sights', 'landmark']
             asking_for_places = any(keyword in query_lower for keyword in places_keywords)
             
+            # Detect if asking for information ABOUT a specific place (not planning)
+            info_request_patterns = [
+                'tell me about', 'tell me more about', 'what can you tell me about',
+                'information about', 'details about', 'describe', 
+                'what is', 'what are the details', 'learn about', 'know about',
+                'opening hours', 'entry fee', 'entrance fee', 'admission',
+                'what makes it special', 'visitor tips', 'history of'
+            ]
+            is_info_request = any(pattern in query_lower for pattern in info_request_patterns)
+            
             # Detect complex queries that need multi-step execution and structured itinerary format
             complex_keywords = ['plan', 'trip', 'weekend', 'itinerary', 'schedule', 'visit for', 'days in', 'day in', 'spend', 'vacation', 'travel to']
             multi_day_keywords = ['days', 'day', 'weekend', 'week']
@@ -154,21 +171,49 @@ Return ONLY the JSON, no other text."""
             query_type = analysis.get("query_type", "simple")
             needs_places = analysis.get("needs_places", False) or asking_for_places
             
-            # Complex queries with duration get multi-step format, simple place queries get detailed_places
-            if is_complex and has_duration:
+            # Priority: Information requests about specific places should NOT trigger complex planning
+            if is_info_request:
+                query_type = "simple"  # Use simple conversational format for info requests
+                is_complex = False
+            # Complex queries with duration get multi-step format
+            elif is_complex and has_duration:
                 query_type = "multi_step_itinerary"
+            # Simple place queries get detailed_places
             elif needs_places and not is_complex:
                 query_type = "detailed_places"
             
+            # Determine the main location to preserve
+            extracted_location = analysis.get("location")
+            is_city = analysis.get("is_city", True)
+            
+            # Preserve main_location (city) if current query is about a specific attraction
+            current_main_location = state.get("main_location")
+            
+            if is_info_request and not is_city and current_main_location:
+                # Keep the previous main location when asking about a specific attraction
+                main_location = current_main_location
+                logs.define_logger(
+                    level=20,
+                    message=f"Preserving main_location: {main_location} while querying about attraction: {extracted_location}",
+                    loggName=inspect.stack()[0]
+                )
+            elif extracted_location and is_city:
+                # Update main location when a new city is mentioned
+                main_location = extracted_location
+            else:
+                # Keep existing main location or use extracted location
+                main_location = current_main_location or extracted_location
+            
             logs.define_logger(
                 level=20,
-                message=f"Analysis result - query: '{state['query']}', needs_places: {needs_places}, query_type: {query_type}, is_complex: {is_complex}",
+                message=f"Analysis result - query: '{state['query']}', location: {extracted_location}, main_location: {main_location}, needs_places: {needs_places}, query_type: {query_type}, is_complex: {is_complex}",
                 loggName=inspect.stack()[0]
             )
             
             return {
                 **state,
-                "location": analysis.get("location"),
+                "location": extracted_location,
+                "main_location": main_location,
                 "needs_weather": analysis.get("needs_weather", False),
                 "needs_places": needs_places,
                 "query_type": query_type,
@@ -730,6 +775,7 @@ Just chat naturally - no formal formatting needed."""
                 "query": query,
                 "conversation_history": conversation_history or [],
                 "location": None,
+                "main_location": None,
                 "needs_weather": False,
                 "needs_places": False,
                 "query_type": None,
@@ -752,6 +798,7 @@ Just chat naturally - no formal formatting needed."""
             # Return structured response with reasoning and suggestions
             return {
                 "location": final_state.get("location") or "Unknown",
+                "main_location": final_state.get("main_location"),  # Preserve main city context
                 "weather_info": final_state.get("weather_info"),
                 "places_info": final_state.get("places_info") or [],
                 "final_response": final_state.get("final_response") or "I couldn't process your request.",
