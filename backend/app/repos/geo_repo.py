@@ -1,0 +1,35 @@
+import httpx
+import inspect
+from backend.app.core.config import settings
+from backend.app.core.logger import logs
+from backend.app.models.base_models import LocationData
+from typing import List, Optional
+
+class GeoRepo:
+    async def get_coordinates(self, place_name: str) -> Optional[LocationData]:
+        params = {
+            "q": place_name,
+            "format": "json",
+            "limit": 1
+        }
+        headers = {"User-Agent": "TourismAIIntern/1.0"}
+        
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(settings.NOMINATIM_URL, params=params, headers=headers)
+                data = response.json()
+                
+                if data and isinstance(data, list) and len(data) > 0:
+                    return LocationData(
+                        name=data[0].get("display_name", place_name),
+                        lat=float(data[0]["lat"]),
+                        lon=float(data[0]["lon"])
+                    )
+                return None
+            except Exception as e:
+                logs.define_logger(
+                    level=40, 
+                    message=f"Error fetching coordinates for {place_name}: {str(e)}", 
+                    loggName=inspect.stack()[0]
+                )
+                return None
