@@ -12,11 +12,15 @@ class GeoRepo:
             "format": "json",
             "limit": 1
         }
-        headers = {"User-Agent": "TourismAIIntern/1.0"}
+        headers = {
+            "User-Agent": "TourismAIIntern/1.0",
+            "Accept": "application/json"
+        }
         
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             try:
                 response = await client.get(settings.NOMINATIM_URL, params=params, headers=headers)
+                response.raise_for_status()
                 data = response.json()
                 
                 if data and isinstance(data, list) and len(data) > 0:
