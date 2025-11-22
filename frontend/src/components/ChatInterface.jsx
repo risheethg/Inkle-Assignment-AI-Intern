@@ -83,7 +83,7 @@ function ChatInterface() {
     <div className="max-w-5xl mx-auto">
       <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
         {/* Chat Messages */}
-        <div className="h-[calc(100vh-280px)] min-h-[500px] overflow-y-auto p-6 space-y-4 scroll-smooth">
+        <div className="h-[calc(100vh-350px)] min-h-[400px] max-h-[600px] overflow-y-auto p-4 md:p-6 space-y-4 scroll-smooth">
           {messages.map((message, index) => (
             <MessageBubble key={index} message={message} />
           ))}
@@ -99,7 +99,7 @@ function ChatInterface() {
 
         {/* Quick Prompts */}
         {messages.length === 1 && !isLoading && (
-          <div className="px-6 pb-4">
+          <div className="px-4 md:px-6 pb-4">
             <p className="text-purple-200 text-sm mb-2 font-medium">Quick examples:</p>
             <div className="flex flex-wrap gap-2">
               {quickPrompts.map((prompt, idx) => (
@@ -118,9 +118,9 @@ function ChatInterface() {
         {/* Input Form */}
         <form
           onSubmit={handleSubmit}
-          className="border-t border-white/20 p-6 bg-white/5"
+          className="border-t border-white/20 p-4 md:p-6 bg-white/5"
         >
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
               <input
                 type="text"
@@ -140,7 +140,7 @@ function ChatInterface() {
             <button
               type="submit"
               disabled={isLoading || !inputValue.trim()}
-              className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-semibold hover:from-purple-600 hover:to-pink-600 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-purple-500/50 hover:scale-105 active:scale-95 flex items-center gap-2"
+              className="w-full sm:w-auto px-6 md:px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-semibold hover:from-purple-600 hover:to-pink-600 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-purple-500/50 hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
