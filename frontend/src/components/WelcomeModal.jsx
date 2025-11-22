@@ -140,6 +140,36 @@ function WelcomeModal() {
             </ul>
           </div>
 
+          {/* Limitations & Warnings */}
+          <div className="bg-amber-500/10 rounded-xl p-4 border border-amber-500/30">
+            <h3 className="text-lg font-semibold text-amber-300 mb-2 flex items-center gap-2">
+              <span className="text-xl">⚠️</span>
+              Important Limitations:
+            </h3>
+            <ul className="space-y-2 text-amber-100 text-sm">
+              <li className="flex items-start gap-2">
+                <span className="text-amber-400 mt-0.5">•</span>
+                <span><strong>Free Tier Hosting:</strong> Backend (Render) sleeps after 15 min of inactivity. First request may take 30-50s to wake up.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-amber-400 mt-0.5">•</span>
+                <span><strong>AI Model Quotas:</strong> Gemini API limited to 250 requests/day. If quota exceeded, responses may be delayed or temporarily unavailable.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-amber-400 mt-0.5">•</span>
+                <span><strong>Geocoding API Limits:</strong> Nominatim & Photon APIs have rate limits. Multiple rapid location queries may experience delays.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-amber-400 mt-0.5">•</span>
+                <span><strong>Data Freshness:</strong> Weather data updates every 15 minutes. Tourist attraction info based on OpenStreetMap community data.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-amber-400 mt-0.5">•</span>
+                <span><strong>Demo Environment:</strong> This is a prototype deployment. For production use, consider upgrading to paid hosting tiers.</span>
+              </li>
+            </ul>
+          </div>
+
           {/* CTA Button */}
           <button
             onClick={handleClose}
