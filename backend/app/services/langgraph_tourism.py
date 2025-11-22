@@ -117,16 +117,21 @@ Return ONLY the JSON, no other text."""
             places_keywords = ['place', 'attraction', 'visit', 'spot', 'thing', 'see', 'do', 'tourist', 'sights', 'landmark']
             asking_for_places = any(keyword in query_lower for keyword in places_keywords)
             
-            # Detect complex queries that need multi-step execution
-            complex_keywords = ['plan', 'trip', 'weekend', 'itinerary', 'schedule', 'visit for', 'days in', 'spend', 'vacation']
-            is_complex = any(keyword in query_lower for keyword in complex_keywords)
+            # Detect complex queries that need multi-step execution and structured itinerary format
+            complex_keywords = ['plan', 'trip', 'weekend', 'itinerary', 'schedule', 'visit for', 'days in', 'day in', 'spend', 'vacation', 'travel to']
+            multi_day_keywords = ['days', 'day', 'weekend', 'week']
             
-            # Force detailed_places format if places are requested
+            is_complex = any(keyword in query_lower for keyword in complex_keywords)
+            has_duration = any(keyword in query_lower for keyword in multi_day_keywords)
+            
+            # Determine query type and format
             query_type = analysis.get("query_type", "simple")
             needs_places = analysis.get("needs_places", False) or asking_for_places
             
-            # Override query type if asking for places
-            if needs_places:
+            # Complex queries with duration get multi-step format, simple place queries get detailed_places
+            if is_complex and has_duration:
+                query_type = "multi_step_itinerary"
+            elif needs_places and not is_complex:
                 query_type = "detailed_places"
             
             logs.define_logger(
@@ -364,34 +369,69 @@ Return ONLY the JSON, no other text."""
                 loggName=inspect.stack()[0]
             )
             
-            # Build response based on query type
-            if is_complex and execution_plan:
-                # Complex query with multi-step execution plan
+            # Build response based on query type - dynamic format selection
+            if query_type == "multi_step_itinerary" and execution_plan:
+                # Multi-step execution format - structured itinerary planning
                 plan_items = "\n".join([f"{i+1}. {step}" for i, step in enumerate(execution_plan)])
+                places_list = "\n".join([f"- {place}" for place in state["places_info"]]) if state.get("places_info") else "- Exploring local attractions"
                 
-                prompt = f"""You are TravelMate, a professional travel planning assistant.
+                prompt = f"""You are TravelMate, a professional travel itinerary planner.
 
-{context}
+User Query: {state['query']}
 
-I've prepared a comprehensive travel plan for the user:
+Available Information:
+- Location: {state.get('location', 'Unknown')}
+- Weather: {state.get('weather_info', 'Weather data unavailable')}
+- Top Attractions:
+{places_list}
 
-**Execution Plan:**
+Execution Steps:
 {plan_items}
 
-**Travel Tips:**
-{travel_tips or "Pack accordingly and have a great trip!"}
+Travel Tips: {travel_tips or "Travel smart and enjoy your journey!"}
 
-Now, create a warm, detailed response that:
-1. Greets the user enthusiastically about their trip
-2. Presents the weather information clearly
-3. Lists the top attractions in a structured format (use bullet points)
-4. Incorporates the execution plan naturally into the response
-5. Includes the travel tips
-6. Ends with an encouraging message
+Create a STRUCTURED multi-day itinerary following this EXACT format:
 
-Be thorough but conversational. This is a full trip plan, so give them everything they need to know!"""
+---
+**🌤️ WEATHER OVERVIEW**
+{state.get('weather_info', 'Check local weather before departure')}
 
-                temperature = 0.6
+**📍 TOP ATTRACTIONS**
+List the attractions as bullet points, each on its own line.
+
+**📅 YOUR ITINERARY**
+
+**Day 1: [Theme/Focus]**
+- Morning: [Activity/Location]
+- Afternoon: [Activity/Location]
+- Evening: [Activity/Location]
+
+**Day 2: [Theme/Focus]**
+- Morning: [Activity/Location]
+- Afternoon: [Activity/Location]
+- Evening: [Activity/Location]
+
+(Continue for all days mentioned in the query)
+
+**💡 TRAVEL TIPS**
+{travel_tips}
+
+**✨ FINAL THOUGHTS**
+Brief encouraging conclusion about their trip.
+---
+
+CRITICAL RULES:
+1. Use clear section headers with emojis
+2. Create day-by-day breakdown with specific times
+3. Incorporate the provided attractions into daily activities
+4. Keep each day balanced (morning, afternoon, evening)
+5. Be specific about what to do when
+6. Professional but warm tone
+7. End with encouragement
+
+Generate the complete structured itinerary now:"""
+
+                temperature = 0.5
                 
             elif query_type == "detailed_places" and has_places:
                 # User explicitly asked for places - use structured format

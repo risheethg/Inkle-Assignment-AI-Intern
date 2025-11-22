@@ -118,27 +118,38 @@ class AIClient:
                     safety_settings=safety_settings
                 )
                 
-                # Handle complex responses
+                # Handle complex responses - try multiple extraction methods
+                text = ""
+                
+                # Method 1: Try simple .text accessor
                 try:
                     text = response.text
+                except:
+                    # Method 2: Extract from parts directly
+                    try:
+                        if response.candidates and len(response.candidates) > 0:
+                            parts = response.candidates[0].content.parts
+                            text = "".join(part.text for part in parts if hasattr(part, 'text'))
+                    except Exception as parts_error:
+                        logs.define_logger(
+                            level=40,
+                            message=f"Failed to extract from parts: {str(parts_error)}",
+                            loggName=inspect.stack()[0]
+                        )
+                
+                if text:
                     logs.define_logger(
                         level=20,
-                        message=f"Gemini response - length: {len(text)} chars",
+                        message=f"Gemini response extracted - length: {len(text)} chars",
                         loggName=inspect.stack()[0]
                     )
                     return text
-                except Exception as extract_error:
+                else:
                     logs.define_logger(
                         level=40,
-                        message=f"Failed to extract Gemini response text: {str(extract_error)}",
+                        message="Gemini returned empty response after all extraction attempts",
                         loggName=inspect.stack()[0]
                     )
-                    # If .text fails, manually extract text from parts
-                    if response.candidates:
-                        parts = response.candidates[0].content.parts
-                        extracted = "".join(part.text for part in parts if hasattr(part, 'text'))
-                        if extracted:
-                            return extracted
                     return ""
         
         except Exception as e:
