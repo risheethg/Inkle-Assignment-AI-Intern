@@ -1,6 +1,6 @@
 """
-AI Client - Wrapper for OpenAI and Anthropic APIs
-Provides a unified interface for both providers
+AI Client - Wrapper for OpenAI, Anthropic, and Google Gemini APIs
+Provides a unified interface for all providers
 """
 from typing import List, Dict, Any
 from app.core.config import settings
@@ -23,6 +23,13 @@ class AIClient:
                 raise ValueError("ANTHROPIC_API_KEY not set in environment variables")
             self.client = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
             self.model = settings.ANTHROPIC_MODEL
+        elif self.provider == "gemini":
+            import google.generativeai as genai
+            if not settings.GEMINI_API_KEY:
+                raise ValueError("GEMINI_API_KEY not set in environment variables")
+            genai.configure(api_key=settings.GEMINI_API_KEY)
+            self.client = genai.GenerativeModel(settings.GEMINI_MODEL)
+            self.model = settings.GEMINI_MODEL
         else:
             raise ValueError(f"Unsupported AI provider: {self.provider}")
     
@@ -62,6 +69,48 @@ class AIClient:
                     messages=anthropic_messages
                 )
                 return response.content[0].text
+            
+            elif self.provider == "gemini":
+                # Convert messages to Gemini format
+                gemini_messages = []
+                system_instruction = None
+                
+                for msg in messages:
+                    if msg["role"] == "system":
+                        system_instruction = msg["content"]
+                    elif msg["role"] == "user":
+                        gemini_messages.append({
+                            "role": "user",
+                            "parts": [msg["content"]]
+                        })
+                    elif msg["role"] == "assistant":
+                        gemini_messages.append({
+                            "role": "model",
+                            "parts": [msg["content"]]
+                        })
+                
+                # Create chat with system instruction if provided
+                if system_instruction:
+                    chat = self.client.start_chat(
+                        history=gemini_messages[:-1] if gemini_messages else [],
+                    )
+                    # Prepend system instruction to first user message
+                    user_content = gemini_messages[-1]["parts"][0] if gemini_messages else ""
+                    full_prompt = f"{system_instruction}\n\n{user_content}"
+                else:
+                    chat = self.client.start_chat(
+                        history=gemini_messages[:-1] if gemini_messages else []
+                    )
+                    full_prompt = gemini_messages[-1]["parts"][0] if gemini_messages else ""
+                
+                response = await chat.send_message_async(
+                    full_prompt,
+                    generation_config={
+                        "temperature": temperature,
+                        "max_output_tokens": 1024,
+                    }
+                )
+                return response.text
         
         except Exception as e:
             logs.define_logger(

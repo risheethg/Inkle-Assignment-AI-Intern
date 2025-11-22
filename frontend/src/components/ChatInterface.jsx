@@ -40,7 +40,7 @@ function ChatInterface() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/tourism/chat`, {
+      const response = await axios.post(`${API_BASE_URL}/tourism/chat`, {
         query: inputValue,
       });
 
