@@ -95,7 +95,16 @@ class AIClient:
                         max_output_tokens=1024,
                     )
                 )
-                return response.text
+                
+                # Handle complex responses
+                try:
+                    return response.text
+                except:
+                    # If .text fails, manually extract text from parts
+                    if response.candidates:
+                        parts = response.candidates[0].content.parts
+                        return "".join(part.text for part in parts if hasattr(part, 'text'))
+                    return ""
         
         except Exception as e:
             logs.define_logger(
