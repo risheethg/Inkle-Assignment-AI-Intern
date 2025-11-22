@@ -1,9 +1,9 @@
 import httpx
 import inspect
-from backend.app.core.config import settings
-from backend.app.core.logger import logs
-from backend.app.models.base_models import LocationData
-from typing import List, Optional
+from typing import Optional
+from app.core.config import settings
+from app.core.logger import logs
+from app.models.location_models import LocationData
 
 class GeoRepo:
     async def get_coordinates(self, place_name: str) -> Optional[LocationData]:
