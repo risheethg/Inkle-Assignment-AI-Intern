@@ -3,7 +3,7 @@ import axios from 'axios';
 import MessageBubble from './MessageBubble';
 import LoadingDots from './LoadingDots';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 function ChatInterface() {
   const [messages, setMessages] = useState([
@@ -40,7 +40,7 @@ function ChatInterface() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/tourism/chat`, {
+      const response = await axios.post(`${API_BASE_URL}/tourism/chat`, {
         query: inputValue,
       });
 

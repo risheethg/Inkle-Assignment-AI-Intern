@@ -3,50 +3,37 @@ Tourism Routes - API endpoints for the tourism chatbot
 """
 from fastapi import APIRouter, HTTPException
 from app.models.agent_models import UserQuery, AgentResponse
-from app.services.tourism_agent import TourismAgent
+from app.services.langgraph_tourism import langgraph_tourism_agent
 from app.core.logger import logs
 import inspect
 
 router = APIRouter(prefix="/api/tourism", tags=["Tourism"])
 
-# Initialize tourism agent
-tourism_agent = TourismAgent()
+# Using LangGraph-based tourism agent
+tourism_agent = langgraph_tourism_agent
 
 @router.post("/chat", response_model=AgentResponse)
 async def chat_with_tourism_agent(query: UserQuery):
     """
-    Main endpoint for tourism chatbot
+    Main endpoint for tourism chatbot using LangGraph
     
     Accepts a user query and returns:
     - Location information
     - Weather information (if requested)
     - Tourist attractions (if requested)
     - Natural language response
+    
+    Now powered by LangGraph for better orchestration and parallel execution
     """
     try:
-        # Process query through tourism agent
-        final_response = await tourism_agent.process_query(query.query)
-        
-        # Get analysis for response structure
-        analysis = await tourism_agent.analyze_query(query.query)
-        place_name = analysis.get("place", "Unknown")
-        
-        # Gather structured data
-        weather_info = None
-        places_info = None
-        
-        if analysis.get("wants_weather"):
-            weather_info = await tourism_agent.weather_agent.get_weather_info(place_name)
-        
-        if analysis.get("wants_places"):
-            places = await tourism_agent.places_agent.get_tourist_places(place_name)
-            places_info = places
+        # Process query through LangGraph workflow
+        result = await tourism_agent.process_query(query.query)
         
         return AgentResponse(
-            location=place_name,
-            weather_info=weather_info,
-            places_info=places_info,
-            final_response=final_response
+            location=result["location"],
+            weather_info=result["weather_info"],
+            places_info=result["places_info"],
+            final_response=result["final_response"]
         )
     
     except Exception as e:

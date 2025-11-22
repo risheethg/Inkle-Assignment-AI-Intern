@@ -32,8 +32,22 @@ function MessageBubble({ message }) {
               : 'bg-white/20 text-white border border-white/30 backdrop-blur-md'
           }`}
         >
+          {/* Main content - clean it up by removing markdown formatting */}
           <div className="whitespace-pre-wrap break-words leading-relaxed">
-            {message.content}
+            {isUser 
+              ? message.content 
+              : message.content
+                  .replace(/\*\*/g, '') // Remove bold markers
+                  .replace(/\*/g, '')   // Remove italic markers
+                  .split('\n')
+                  .filter(line => 
+                    !line.includes('Weather:') && 
+                    !line.includes('Location:') && 
+                    !line.trim().match(/^\d+\./)
+                  )
+                  .join('\n')
+                  .trim()
+            }
           </div>
           
           {/* Show structured data for assistant responses */}
