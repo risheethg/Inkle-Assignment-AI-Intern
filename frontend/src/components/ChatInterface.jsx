@@ -40,8 +40,17 @@ function ChatInterface() {
     setIsLoading(true);
 
     try {
+      // Build conversation history from messages (excluding the welcome message and timestamps)
+      const conversationHistory = messages
+        .filter(msg => !msg.timestamp || messages.indexOf(msg) > 0) // Skip initial welcome
+        .map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }));
+
       const response = await axios.post(`${API_BASE_URL}/tourism/chat`, {
         query: inputValue,
+        conversation_history: conversationHistory,
       });
 
       const assistantMessage = {

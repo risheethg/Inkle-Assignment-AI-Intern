@@ -20,9 +20,11 @@ import inspect
 class TourismState(TypedDict):
     """Shared state that flows through the graph"""
     query: str
+    conversation_history: list[dict] | None  # Store previous conversation
     location: str | None
     needs_weather: bool
     needs_places: bool
+    query_type: str | None  # 'detailed_places', 'simple', or 'weather_focused'
     weather_info: str | None
     places_info: list[str] | None
     final_response: str | None
@@ -49,16 +51,37 @@ class LangGraphTourismAgent:
                 loggName=inspect.stack()[0]
             )
             
+            # Build context from conversation history
+            context = ""
+            if state.get('conversation_history') and len(state['conversation_history']) > 0:
+                context = "\n\nPrevious conversation context:\n"
+                for msg in state['conversation_history'][-4:]:  # Last 4 messages for context
+                    role = msg.get('role', 'user')
+                    content = msg.get('content', '')
+                    context += f"{role}: {content}\n"
+            
             prompt = f"""Analyze this tourism query and extract information in JSON format.
+{context}
+Current Query: "{state['query']}"
 
-Query: "{state['query']}"
+Important: If the current query refers to previous context (e.g., "that place", "there", "it"), extract the location from the conversation history above.
 
 Return a JSON object with:
-- location: The city/place name mentioned (string or null)
+- location: The city/place name mentioned or referenced (string or null)
 - needs_weather: true if asking about weather/temperature/climate
 - needs_places: true if asking about places to visit/attractions/things to do
+- query_type: Classify the query as one of:
+  * "detailed_places" - User asks about places/attractions/spots/things to do/visit (keywords: places, attractions, visit, spots, things to do, tourist, sights, landmarks)
+  * "weather_focused" - ONLY if asking JUST about weather with no places mentioned
+  * "simple" - Everything else (general questions, trip planning, casual queries)
 
-Example: {{"location": "Paris", "needs_weather": true, "needs_places": true}}
+IMPORTANT: If needs_places is true, query_type should be "detailed_places"
+
+Examples:
+{{"location": "Paris", "needs_weather": false, "needs_places": true, "query_type": "detailed_places"}}
+{{"location": "Tokyo", "needs_weather": true, "needs_places": false, "query_type": "weather_focused"}}
+{{"location": "London", "needs_weather": true, "needs_places": false, "query_type": "weather_focused"}}
+{{"location": "Barcelona", "needs_weather": false, "needs_places": true, "query_type": "detailed_places"}}
 
 Return ONLY the JSON, no other text."""
 
@@ -86,11 +109,31 @@ Return ONLY the JSON, no other text."""
                 else:
                     raise ValueError("No valid JSON found in response")
             
+            # Keyword-based detection for places queries
+            query_lower = state['query'].lower()
+            places_keywords = ['place', 'attraction', 'visit', 'spot', 'thing', 'see', 'do', 'tourist', 'sights', 'landmark']
+            asking_for_places = any(keyword in query_lower for keyword in places_keywords)
+            
+            # Force detailed_places format if places are requested
+            query_type = analysis.get("query_type", "simple")
+            needs_places = analysis.get("needs_places", False) or asking_for_places
+            
+            # Override query type if asking for places
+            if needs_places:
+                query_type = "detailed_places"
+            
+            logs.define_logger(
+                level=20,
+                message=f"Analysis result - query: '{state['query']}', needs_places: {needs_places}, query_type: {query_type}",
+                loggName=inspect.stack()[0]
+            )
+            
             return {
                 **state,
                 "location": analysis.get("location"),
                 "needs_weather": analysis.get("needs_weather", False),
-                "needs_places": analysis.get("needs_places", False)
+                "needs_places": needs_places,
+                "query_type": query_type
             }
             
         except Exception as e:
@@ -112,7 +155,8 @@ Return ONLY the JSON, no other text."""
                 **state,
                 "location": location,
                 "needs_weather": True,
-                "needs_places": True
+                "needs_places": True,
+                "query_type": "simple"
             }
     
     async def weather_node(self, state: TourismState) -> TourismState:
@@ -176,10 +220,11 @@ Return ONLY the JSON, no other text."""
             places = await self.places_repo.get_tourist_attractions(
                 coords.lat,
                 coords.lon,
-                radius=5000
+                limit=5
             )
             
-            place_names = [place["name"] for place in places[:5]]
+            # places is already a list of names
+            place_names = places if isinstance(places, list) else []
             
             return {**state, "places_info": place_names}
             
@@ -201,7 +246,18 @@ Return ONLY the JSON, no other text."""
             )
             
             # Build context for the AI
-            context_parts = [f"User asked: {state['query']}"]
+            context_parts = []
+            
+            # Add conversation history for context
+            if state.get('conversation_history') and len(state['conversation_history']) > 0:
+                context_parts.append("Previous conversation:")
+                for msg in state['conversation_history'][-4:]:  # Last 4 messages
+                    role = msg.get('role', 'user')
+                    content = msg.get('content', '')[:200]  # Limit length
+                    context_parts.append(f"{role}: {content}")
+                context_parts.append("")  # Empty line separator
+            
+            context_parts.append(f"Current query: {state['query']}")
             
             if state.get("location"):
                 context_parts.append(f"Location: {state['location']}")
@@ -215,18 +271,32 @@ Return ONLY the JSON, no other text."""
             
             context = "\n\n".join(context_parts)
             
-            # Generate friendly response
-            prompt = f"""You are TravelMate, an enthusiastic and helpful travel assistant. Based on the information below, provide a detailed, engaging response.
+            # Get query type and data availability
+            query_type = state.get("query_type", "simple")
+            has_weather = state.get("weather_info") is not None
+            has_places = state.get("places_info") and len(state["places_info"]) > 0
+            
+            # Log for debugging
+            logs.define_logger(
+                level=20,
+                message=f"Synthesize - query_type: {query_type}, has_places: {has_places}, has_weather: {has_weather}",
+                loggName=inspect.stack()[0]
+            )
+            
+            # Build response based on query type
+            if query_type == "detailed_places" and has_places:
+                # User explicitly asked for places - use structured format
+                prompt = f"""You are TravelMate, an enthusiastic and helpful travel assistant.
 
 {context}
 
-Generate a response with this EXACT structure:
+The user specifically asked about places to visit. Generate a response following this EXACT structure:
 
 Hello there! [Location] is a fantastic choice, you're going to have a wonderful time!
 
 Let's get you up to speed:
 
-**Weather:** [Write the weather information here]
+**Weather:** [Weather description]
 
 And speaking of exploring, [Location] has some great spots you might enjoy:
 
@@ -238,15 +308,64 @@ And speaking of exploring, [Location] has some great spots you might enjoy:
 
 Enjoy your trip to [Location]! Let me know if you need anything else!
 
-IMPORTANT:
-- Use ONLY the attraction names from the provided list, do NOT add descriptions
-- Keep each attraction on its own line with the * ** ** format
-- Include the weather section with the temperature and precipitation information provided
-- Do not add extra text or explanations for the attractions"""
+CRITICAL RULES - FOLLOW EXACTLY:
+1. List ONLY attraction names - NO descriptions, NO explanations, NO details
+2. Format: * **Name** (nothing else on that line)
+3. Do NOT write about what they are or why they're good
+4. Do NOT add any text after the attraction name
+5. Just the name in bold with the asterisk bullet point
+
+Example of CORRECT format:
+* **Eiffel Tower**
+* **Louvre Museum**
+
+Example of WRONG format (DO NOT DO THIS):
+* **Eiffel Tower** - it's incredible and a great way to warm up!
+
+Remember: JUST THE NAMES, nothing more."""
+
+                temperature = 0.3
+                
+            elif query_type == "weather_focused":
+                # Weather-focused query - natural but informative
+                prompt = f"""You are TravelMate, a friendly travel assistant.
+
+{context}
+
+The user is primarily interested in weather. Respond naturally and conversationally.
+
+Guidelines:
+- Focus on weather information, be specific about temperature and conditions
+- Keep it concise and friendly
+- If places are available, mention them briefly and casually
+- End with a helpful offer (e.g., "Would you like to know about places to visit?")
+- Natural language, no rigid formatting"""
+
+                temperature = 0.8
+                
+            else:
+                # Simple/casual query - fully natural conversation
+                prompt = f"""You are TravelMate, a friendly travel assistant having a natural conversation.
+
+{context}
+
+Respond in a natural, conversational way - like chatting with a knowledgeable friend.
+
+Guidelines:
+- Be concise and casual
+- If providing weather, mention it naturally (e.g., "It's around 22°C with some clouds")
+- If listing places, weave them into conversation naturally (e.g., "You should check out the Eiffel Tower, Louvre, and Notre-Dame")
+- No bullet points or rigid structure unless you have many items (5+)
+- Keep it brief and friendly
+- End casually
+
+Just chat naturally - no formal formatting needed."""
+
+                temperature = 0.8
 
             response = await ai_client.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.7
+                temperature=temperature
             )
             
             return {**state, "final_response": response.strip()}
@@ -308,12 +427,13 @@ IMPORTANT:
     
     # ========== PUBLIC API ==========
     
-    async def process_query(self, query: str) -> dict:
+    async def process_query(self, query: str, conversation_history: list[dict] = None) -> dict:
         """
         Process a tourism query through the LangGraph workflow
         
         Args:
             query: User's tourism question
+            conversation_history: List of previous messages for context
             
         Returns:
             dict with location, weather_info, places_info, and final_response
@@ -322,9 +442,11 @@ IMPORTANT:
             # Initialize state
             initial_state: TourismState = {
                 "query": query,
+                "conversation_history": conversation_history or [],
                 "location": None,
                 "needs_weather": False,
                 "needs_places": False,
+                "query_type": None,
                 "weather_info": None,
                 "places_info": None,
                 "final_response": None,
