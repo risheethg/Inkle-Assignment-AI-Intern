@@ -29,8 +29,8 @@ cp .env.example .env
 Edit `.env` and add your API keys:
 
 ```env
-# Choose your AI provider: openai or anthropic
-AI_PROVIDER=openai
+# Choose your AI provider: openai, anthropic, or gemini
+AI_PROVIDER=gemini
 
 # OpenAI Configuration (if using OpenAI)
 OPENAI_API_KEY=your_openai_api_key_here
@@ -39,6 +39,10 @@ OPENAI_MODEL=gpt-4
 # Anthropic Configuration (if using Anthropic)
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 ANTHROPIC_MODEL=claude-3-sonnet-20240229
+
+# Google Gemini Configuration (if using Gemini)
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-1.5-flash
 
 # Application Settings
 LOG_LEVEL=20
