@@ -1,8 +1,8 @@
-# TravelMate AI - Multi-Agent Tourism Assistant
+﻿# TravelMate AI - Multi-Agent Tourism Assistant
 
 An intelligent AI-powered tourism chatbot built with a multi-agent architecture using LangGraph. Get real-time weather information, discover tourist attractions, and receive personalized travel itineraries with transparent reasoning and interactive UI.
 
-## 🌐 Live Demo
+##  Live Demo
 
 - **Frontend**: [https://inkle-assignment-ai-intern-nu.vercel.app](https://inkle-assignment-ai-intern-nu.vercel.app)
 - **Backend API**: [https://inkle-assignment-ai-intern-5pk5.onrender.com](https://inkle-assignment-ai-intern-5pk5.onrender.com)
@@ -43,30 +43,30 @@ All agents use AI (OpenAI/Anthropic/Gemini) for natural language understanding a
 - **Open-Meteo API**: Real-time weather data with precipitation
 - **Overpass API**: Tourist attractions from OpenStreetMap
 
-## ✨ Features
+##  Features
 
 ### Core Capabilities
-- 🤖 **Multi-Agent LangGraph Architecture**: Coordinated workflow with Query Analyzer, Trip Planner, Weather Agent, Places Agent, and Response Generator
-- 🌍 **Natural Language Understanding**: Intelligently parses complex travel queries with context awareness
-- 🌡️ **Real-time Weather Data**: Current temperature and precipitation probability
-- 🏛️ **Tourist Attractions Discovery**: Up to 5 curated recommendations per location
-- 📅 **Multi-Day Itinerary Planning**: Automatic day-by-day trip planning with morning/afternoon/evening activities
-- 💬 **Conversational Memory**: Maintains context across multiple queries in a session
-- 🎯 **Smart Query Classification**: Distinguishes between information requests, place lists, and trip planning
+-  **Multi-Agent LangGraph Architecture**: Coordinated workflow with Query Analyzer, Trip Planner, Weather Agent, Places Agent, and Response Generator
+-  **Natural Language Understanding**: Intelligently parses complex travel queries with context awareness
+-  **Real-time Weather Data**: Current temperature and precipitation probability
+-  **Tourist Attractions Discovery**: Up to 5 curated recommendations per location
+-  **Multi-Day Itinerary Planning**: Automatic day-by-day trip planning with morning/afternoon/evening activities
+-  **Conversational Memory**: Maintains context across multiple queries in a session
+-  **Smart Query Classification**: Distinguishes between information requests, place lists, and trip planning
 
 ### Advanced Features
-- 🔄 **Real-time Streaming**: Live agent reasoning with animated thinking display (Gemini-style)
-- 💡 **Proactive Suggestions**: Context-aware follow-up suggestions after each response
-- 🎨 **Interactive UI Components**: 
+-  **Real-time Streaming**: Live agent reasoning with animated thinking display (Gemini-style)
+-  **Proactive Suggestions**: Context-aware follow-up suggestions after each response
+-  **Interactive UI Components**: 
   - Expandable place cards with "Learn More" buttons
   - Weather cards with collapsible details
   - Location cards with "Explore More" actions
   - Animated suggestion buttons
-- 📍 **Context Preservation**: Maintains main location when exploring specific attractions
-- 📋 **Copy to Clipboard**: One-click response copying
-- 🎭 **Dynamic Response Formatting**: Automatically switches between formats (simple, detailed places, multi-step itinerary)
-- 🔍 **Transparent Reasoning**: See which agents ran and why in an expandable dropdown
-- ⚡ **Full-Screen Responsive Design**: Adapts perfectly to any screen size
+-  **Context Preservation**: Maintains main location when exploring specific attractions
+-  **Copy to Clipboard**: One-click response copying
+-  **Dynamic Response Formatting**: Automatically switches between formats (simple, detailed places, multi-step itinerary)
+-  **Transparent Reasoning**: See which agents ran and why in an expandable dropdown
+-  **Full-Screen Responsive Design**: Adapts perfectly to any screen size
 
 ## Quick Start
 
@@ -146,19 +146,19 @@ Visit http://localhost:5173 and try:
 - **Information Request**: "Tell me more about Tokyo Tower" (after getting places in Tokyo)
 - **Follow-up**: Click on suggestion buttons for contextual queries
 
-## 💬 Example Interactions
+##  Example Interactions
 
 **Example 1: Simple Weather Query**
 ```
 User: What's the weather in Tokyo?
 AI: [Shows thinking process with Query Analyzer and Weather Agent]
-    You're asking about the weather at the Tokyo! It's currently a pleasant 21.2°C there, 
+    You're asking about the weather at the Tokyo! It's currently a pleasant 21.2C there, 
     with a very low 1.0% chance of rain. Sounds like perfect weather!
     
-    📍 Location: Tokyo
-    🌤️ Weather: Currently 21.2°C with 1.0% chance of rain
+     Location: Tokyo
+     Weather: Currently 21.2C with 1.0% chance of rain
     
-    💡 Suggestions:
+     Suggestions:
     - Check current weather in Tokyo
     - Find best restaurants in Tokyo
 ```
@@ -166,45 +166,45 @@ AI: [Shows thinking process with Query Analyzer and Weather Agent]
 **Example 2: Places Discovery**
 ```
 User: Best places in Tokyo?
-AI: [Shows reasoning: Query Analyzer → Places Agent → Response Generator]
+AI: [Shows reasoning: Query Analyzer  Places Agent  Response Generator]
     Here are the top attractions in Tokyo:
     
-    🏛️ Top Attractions (5 places)
-    1. Tokyo Tower ▼ [Click to expand and "Learn More"]
-    2. Senso-ji Temple ▼
-    3. Meiji Shrine ▼
-    4. Tokyo Skytree ▼
-    5. Imperial Palace ▼
+     Top Attractions (5 places)
+    1. Tokyo Tower  [Click to expand and "Learn More"]
+    2. Senso-ji Temple 
+    3. Meiji Shrine 
+    4. Tokyo Skytree 
+    5. Imperial Palace 
     
-    💡 You might also want to:
-    1. Check current weather in Tokyo →
-    2. Get accommodation tips →
+     You might also want to:
+    1. Check current weather in Tokyo 
+    2. Get accommodation tips 
 ```
 
 **Example 3: Multi-Day Trip Planning**
 ```
 User: Plan a 3-day trip to Bali
-AI: [Streaming reasoning shows: Query Analyzer → Trip Planner → Weather Agent → Places Agent]
+AI: [Streaming reasoning shows: Query Analyzer  Trip Planner  Weather Agent  Places Agent]
     
-    🗓️ Your 3-Day Bali Itinerary
+     Your 3-Day Bali Itinerary
     
-    📅 Day 1: Cultural Immersion
-    🌅 Morning:
+     Day 1: Cultural Immersion
+     Morning:
     - Tanah Lot Temple (8:00 AM - 11:00 AM)
       [Iconic sea temple, best at sunrise]
     
-    ☀️ Afternoon:
+     Afternoon:
     - Ubud Monkey Forest (2:00 PM - 5:00 PM)
       [Sacred sanctuary with playful monkeys]
     
-    🌙 Evening:
+     Evening:
     - Traditional Kecak Dance at Uluwatu (6:00 PM - 8:00 PM)
     
     [Day 2 and Day 3 continue with similar structure...]
     
-    🌤️ Weather: Currently 28°C with 15% chance of rain
+     Weather: Currently 28C with 15% chance of rain
     
-    💡 Suggestions:
+     Suggestions:
     - Find best restaurants in Bali
     - Get accommodation tips
 ```
@@ -217,71 +217,71 @@ AI: [Query correctly interpreted as information request about specific attractio
     
     Tokyo Tower is an iconic landmark standing at 333 meters tall. 
     
-    ℹ️ Details:
-    • Opening Hours: 9:00 AM - 11:00 PM
-    • Entry Fee: ¥1,200 for Main Deck
-    • Best Time: Evening for city lights view
-    • Tips: Visit on weekdays to avoid crowds
+     Details:
+     Opening Hours: 9:00 AM - 11:00 PM
+     Entry Fee: 1,200 for Main Deck
+     Best Time: Evening for city lights view
+     Tips: Visit on weekdays to avoid crowds
     
-    📍 Location: Tokyo [Preserved - still shows main city, not "Tokyo Tower"]
+     Location: Tokyo [Preserved - still shows main city, not "Tokyo Tower"]
 ```
 
 ## Project Structure
 
 ```
 .
-├── backend/
-│   ├── app/
-│   │   ├── core/
-│   │   │   ├── config.py          # Multi-provider AI configuration
-│   │   │   └── logger.py          # Logging setup
-│   │   ├── models/
-│   │   │   ├── agent_models.py    # Request/Response models, ReasoningStep, ProactiveSuggestion
-│   │   │   ├── base_models.py     # Core data models
-│   │   │   ├── location_models.py # Geocoding models
-│   │   │   └── weather_models.py  # Weather data models
-│   │   ├── repos/
-│   │   │   ├── geo_repo.py        # Nominatim API integration
-│   │   │   ├── weather_repo.py    # Open-Meteo API integration
-│   │   │   └── places_repo.py     # Overpass API integration
-│   │   ├── routes/
-│   │   │   └── tourism_routes.py  # FastAPI routes with SSE streaming
-│   │   ├── services/
-│   │   │   ├── ai_client.py       # Multi-provider AI client (OpenAI/Anthropic/Gemini)
-│   │   │   ├── langgraph_tourism.py # LangGraph orchestration with state management
-│   │   │   ├── weather_agent.py   # Weather data agent
-│   │   │   └── places_agent.py    # Tourist attractions agent
-│   │   └── main.py                # FastAPI app initialization
-│   ├── Dockerfile
-│   ├── requirements.txt
-│   ├── run.py
-│   └── README.md
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── ChatInterface.jsx       # Main chat component with SSE
-│   │   │   ├── MessageBubble.jsx       # Message display with interactive elements
-│   │   │   ├── LoadingDots.jsx         # Animated loading with status messages
-│   │   │   ├── ThinkingDropdown.jsx    # Real-time reasoning display
-│   │   │   ├── InteractivePlace.jsx    # Expandable place cards
-│   │   │   ├── WeatherCard.jsx         # Interactive weather display
-│   │   │   └── LocationCard.jsx        # Location display with actions
-│   │   ├── App.jsx                     # Main app layout
-│   │   ├── main.jsx                    # React entry point
-│   │   └── index.css                   # Global styles and animations
-│   ├── Dockerfile
-│   ├── nginx.conf
-│   ├── package.json
-│   └── README.md
-├── docker-compose.yml
-├── .env.example
-├── .gitignore
-├── QUICKSTART.md
-├── TESTING_GUIDE.md
-└── README.md
+ backend/
+    app/
+       core/
+          config.py          # Multi-provider AI configuration
+          logger.py          # Logging setup
+       models/
+          agent_models.py    # Request/Response models, ReasoningStep, ProactiveSuggestion
+          base_models.py     # Core data models
+          location_models.py # Geocoding models
+          weather_models.py  # Weather data models
+       repos/
+          geo_repo.py        # Nominatim API integration
+          weather_repo.py    # Open-Meteo API integration
+          places_repo.py     # Overpass API integration
+       routes/
+          tourism_routes.py  # FastAPI routes with SSE streaming
+       services/
+          ai_client.py       # Multi-provider AI client (OpenAI/Anthropic/Gemini)
+          langgraph_tourism.py # LangGraph orchestration with state management
+          weather_agent.py   # Weather data agent
+          places_agent.py    # Tourist attractions agent
+       main.py                # FastAPI app initialization
+    Dockerfile
+    requirements.txt
+    run.py
+    README.md
+ frontend/
+    src/
+       components/
+          ChatInterface.jsx       # Main chat component with SSE
+          MessageBubble.jsx       # Message display with interactive elements
+          LoadingDots.jsx         # Animated loading with status messages
+          ThinkingDropdown.jsx    # Real-time reasoning display
+          InteractivePlace.jsx    # Expandable place cards
+          WeatherCard.jsx         # Interactive weather display
+          LocationCard.jsx        # Location display with actions
+       App.jsx                     # Main app layout
+       main.jsx                    # React entry point
+       index.css                   # Global styles and animations
+    Dockerfile
+    nginx.conf
+    package.json
+    README.md
+ docker-compose.yml
+ .env.example
+ .gitignore
+ QUICKSTART.md
+ TESTING_GUIDE.md
+ README.md
 ```
 
-## 🏗️ Architecture
+##  Architecture
 
 ### LangGraph Multi-Agent Workflow
 
@@ -289,36 +289,36 @@ AI: [Query correctly interpreted as information request about specific attractio
                          User Query
                               |
                               v
-                    ┌─────────────────┐
-                    │ Query Analyzer  │ ──→ Classifies intent & extracts location
-                    │     Node        │     Preserves main_location context
-                    └────────┬────────┘
+                    
+                     Query Analyzer    Classifies intent & extracts location
+                         Node             Preserves main_location context
+                    
                              |
                              v
-                    ┌─────────────────┐
-                    │  Trip Planner   │ ──→ Determines response format
-                    │     Node        │     (simple/detailed_places/multi_step_itinerary)
-                    └────────┬────────┘
+                    
+                      Trip Planner     Determines response format
+                         Node             (simple/detailed_places/multi_step_itinerary)
+                    
                              |
-              ┌──────────────┴──────────────┐
+              
               v                             v
          [needs_weather?]            [needs_places?]
               |                             |
               v                             v
-      ┌──────────────┐              ┌──────────────┐
-      │Weather Agent │              │Places Agent  │
-      │    Node      │              │    Node      │
-      └──────┬───────┘              └──────┬───────┘
+                    
+      Weather Agent               Places Agent  
+          Node                        Node      
+                    
              |                             |
              v                             v
        Open-Meteo API              Overpass API
              |                             |
-             └──────────────┬──────────────┘
+             
                             v
-                  ┌──────────────────┐
-                  │Response Generator│ ──→ Synthesizes final response
-                  │      Node        │     Generates proactive suggestions
-                  └──────────────────┘     Streams reasoning via SSE
+                  
+                  Response Generator  Synthesizes final response
+                        Node             Generates proactive suggestions
+                       Streams reasoning via SSE
                             |
                             v
                     JSON Response with:
@@ -351,27 +351,27 @@ TourismState:
 ### Real-time Streaming Flow
 
 ```
-Frontend (EventSource) ←──SSE──→ Backend (FastAPI)
-         │                            │
-         │  1. User sends query       │
-         ├────────────────────────────→
-         │                            │
-         │  2. Stream reasoning       │
-         ←────────────────────────────┤
-         │  {"type":"reasoning",      │
-         │   "data":{agent, action}}  │
-         │                            │
-         │  3. Stream reasoning       │
-         ←────────────────────────────┤
-         │  (repeated for each node)  │
-         │                            │
-         │  4. Stream final response  │
-         ←────────────────────────────┤
-         │  {"type":"complete",       │
-         │   "data":{...response}}    │
+Frontend (EventSource) SSE Backend (FastAPI)
+                                     
+           1. User sends query       
+         
+                                     
+           2. Stream reasoning       
+         
+           {"type":"reasoning",      
+            "data":{agent, action}}  
+                                     
+           3. Stream reasoning       
+         
+           (repeated for each node)  
+                                     
+           4. Stream final response  
+         
+           {"type":"complete",       
+            "data":{...response}}    
 ```
 
-## 📡 API Documentation
+##  API Documentation
 
 Once the backend is running, visit:
 - **Swagger UI**: http://localhost:8000/docs
@@ -398,9 +398,9 @@ Response:
 ```json
 {
   "location": "Paris",
-  "weather_info": "Currently 15°C with 20% chance of rain",
+  "weather_info": "Currently 15C with 20% chance of rain",
   "places_info": null,
-  "final_response": "In Paris it's currently 15°C with a chance of 20% to rain.",
+  "final_response": "In Paris it's currently 15C with a chance of 20% to rain.",
   "reasoning_trace": [
     {
       "agent": "Query Analyzer",
@@ -410,7 +410,7 @@ Response:
   ],
   "suggestions": [
     {
-      "text": "🏛️ Find best attractions in Paris",
+      "text": " Find best attractions in Paris",
       "query": "What are the top tourist attractions in Paris?"
     }
   ],
@@ -445,7 +445,7 @@ Response:
 }
 ```
 
-## 🛠️ Development
+##  Development
 
 ### Backend Development
 
@@ -510,7 +510,7 @@ docker-compose build --no-cache
 | `GEMINI_MODEL` | Gemini model | `gemini-2.0-flash-exp` | `gemini-2.0-flash-exp`, `gemini-1.5-flash` |
 | `LOG_LEVEL` | Logging level | `20` | `10` (DEBUG), `20` (INFO), `30` (WARNING) |
 
-## 🎯 Key Implementation Highlights
+##  Key Implementation Highlights
 
 ### 1. LangGraph State Machine
 - Implements a directed acyclic graph (DAG) for agent coordination
@@ -543,7 +543,7 @@ Three distinct response formats automatically selected:
 - Auto-scrolling chat interface
 - Full-screen responsive design
 
-## 🧪 Testing
+##  Testing
 
 See [TESTING_GUIDE.md](TESTING_GUIDE.md) for detailed testing procedures.
 
@@ -558,7 +558,7 @@ curl -X POST http://localhost:8000/api/tourism/chat \
 curl http://localhost:8000/api/tourism/health
 ```
 
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -566,7 +566,7 @@ curl http://localhost:8000/api/tourism/health
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 🐛 Troubleshooting
+##  Troubleshooting
 
 ### Common Issues
 
@@ -593,7 +593,7 @@ curl http://localhost:8000/api/tourism/health
 
 For detailed troubleshooting, see [TESTING_GUIDE.md](TESTING_GUIDE.md).
 
-## 📈 Performance Considerations
+##  Performance Considerations
 
 - **Async/Await**: All I/O operations are asynchronous for better concurrency
 - **Connection Pooling**: httpx client reuses connections to external APIs
@@ -602,7 +602,7 @@ For detailed troubleshooting, see [TESTING_GUIDE.md](TESTING_GUIDE.md).
 - **Error Recovery**: Graceful degradation when APIs fail
 - **Rate Limiting**: Respects external API rate limits
 
-## 🔮 Future Enhancements
+##  Future Enhancements
 
 - [ ] User authentication and saved itineraries
 - [ ] Image generation for destinations using DALL-E/Stable Diffusion
@@ -615,7 +615,7 @@ For detailed troubleshooting, see [TESTING_GUIDE.md](TESTING_GUIDE.md).
 - [ ] Social sharing of itineraries
 - [ ] Collaborative trip planning
 
-## 🚀 Deployment
+##  Deployment
 
 ### Production Deployment
 
@@ -646,18 +646,18 @@ For detailed deployment instructions to Vercel and Render, see [DEPLOYMENT.md](D
 - **Vercel**: 100 GB bandwidth/month
 - Consider using [UptimeRobot](https://uptimerobot.com) to keep backend warm
 
-## 📄 License
+##  License
 
 This project is part of the Inkle AI Intern Assignment.
 
-## 👤 Contact
+##  Contact
 
 **Risheeth G**
 - GitHub: [@risheethg](https://github.com/risheethg)
 - Project: [Inkle-Assignment-AI-Intern](https://github.com/risheethg/Inkle-Assignment-AI-Intern)
 - Live Demo: [TravelMate AI](https://inkle-assignment-ai-intern-nu.vercel.app)
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - **LangGraph** by LangChain for state machine orchestration
 - **Open-Meteo** for free weather API
@@ -669,4 +669,4 @@ This project is part of the Inkle AI Intern Assignment.
 
 ---
 
-Made with ❤️ for Inkle AI Intern Assignment
+Made with  for Inkle AI Intern Assignment
