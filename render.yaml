@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: travelmate-ai-backend
+    runtime: python
+    buildCommand: "./render-build.sh"
+    startCommand: "cd backend && python run.py"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: AI_PROVIDER
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-3-sonnet-20240229
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash-exp
+      - key: LOG_LEVEL
+        value: 20
+      - key: PORT
+        value: 8000
+    healthCheckPath: /api/tourism/health
