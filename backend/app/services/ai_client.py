@@ -28,7 +28,7 @@ class AIClient:
             if not settings.GEMINI_API_KEY:
                 raise ValueError("GEMINI_API_KEY not set in environment variables")
             genai.configure(api_key=settings.GEMINI_API_KEY)
-            self.client = genai.GenerativeModel(settings.GEMINI_MODEL)
+            self.genai = genai
             self.model = settings.GEMINI_MODEL
         else:
             raise ValueError(f"Unsupported AI provider: {self.provider}")
@@ -71,44 +71,29 @@ class AIClient:
                 return response.content[0].text
             
             elif self.provider == "gemini":
-                # Convert messages to Gemini format
-                gemini_messages = []
-                system_instruction = None
+                # Convert messages to a simple prompt for Gemini
+                prompt_parts = []
                 
                 for msg in messages:
-                    if msg["role"] == "system":
-                        system_instruction = msg["content"]
-                    elif msg["role"] == "user":
-                        gemini_messages.append({
-                            "role": "user",
-                            "parts": [msg["content"]]
-                        })
-                    elif msg["role"] == "assistant":
-                        gemini_messages.append({
-                            "role": "model",
-                            "parts": [msg["content"]]
-                        })
+                    role = msg["role"]
+                    content = msg["content"]
+                    if role == "system":
+                        prompt_parts.append(f"Instructions: {content}")
+                    elif role == "user":
+                        prompt_parts.append(f"User: {content}")
+                    elif role == "assistant":
+                        prompt_parts.append(f"Assistant: {content}")
                 
-                # Create chat with system instruction if provided
-                if system_instruction:
-                    chat = self.client.start_chat(
-                        history=gemini_messages[:-1] if gemini_messages else [],
-                    )
-                    # Prepend system instruction to first user message
-                    user_content = gemini_messages[-1]["parts"][0] if gemini_messages else ""
-                    full_prompt = f"{system_instruction}\n\n{user_content}"
-                else:
-                    chat = self.client.start_chat(
-                        history=gemini_messages[:-1] if gemini_messages else []
-                    )
-                    full_prompt = gemini_messages[-1]["parts"][0] if gemini_messages else ""
+                full_prompt = "\n\n".join(prompt_parts)
                 
-                response = await chat.send_message_async(
+                # Use generate_content method
+                model = self.genai.GenerativeModel(self.model)
+                response = model.generate_content(
                     full_prompt,
-                    generation_config={
-                        "temperature": temperature,
-                        "max_output_tokens": 1024,
-                    }
+                    generation_config=self.genai.types.GenerationConfig(
+                        temperature=temperature,
+                        max_output_tokens=1024,
+                    )
                 )
                 return response.text
         
