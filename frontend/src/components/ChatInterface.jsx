@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import MessageBubble from './MessageBubble';
 import LoadingDots from './LoadingDots';
+import ThinkingDropdown from './ThinkingDropdown';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -15,6 +16,8 @@ function ChatInterface() {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [currentReasoning, setCurrentReasoning] = useState([]);
+  const [isThinkingComplete, setIsThinkingComplete] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -35,43 +38,89 @@ function ChatInterface() {
       timestamp: new Date(),
     };
 
+    const queryText = inputValue;
     setMessages((prev) => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
+    setCurrentReasoning([]);
+    setIsThinkingComplete(false);
 
     try {
-      // Build conversation history from messages (excluding the welcome message and timestamps)
+      // Build conversation history
       const conversationHistory = messages
-        .filter(msg => !msg.timestamp || messages.indexOf(msg) > 0) // Skip initial welcome
+        .filter(msg => !msg.timestamp || messages.indexOf(msg) > 0)
         .map(msg => ({
           role: msg.role,
           content: msg.content
         }));
 
-      const response = await axios.post(`${API_BASE_URL}/tourism/chat`, {
-        query: inputValue,
-        conversation_history: conversationHistory,
+      // Use EventSource for SSE streaming
+      const eventSource = new EventSource(
+        `${API_BASE_URL}/tourism/chat/stream?${new URLSearchParams({
+          query: queryText,
+          conversation_history: JSON.stringify(conversationHistory)
+        })}`
+      );
+
+      // Use fetch with streaming instead
+      const response = await fetch(`${API_BASE_URL}/tourism/chat/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: queryText,
+          conversation_history: conversationHistory,
+        }),
       });
 
-      const assistantMessage = {
-        role: 'assistant',
-        content: response.data.final_response,
-        data: response.data,
-        timestamp: new Date(),
-      };
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.slice(6));
+            
+            if (data.type === 'reasoning') {
+              setCurrentReasoning(prev => [...prev, data.data]);
+            } else if (data.type === 'complete') {
+              setIsThinkingComplete(true);
+              const assistantMessage = {
+                role: 'assistant',
+                content: data.data.final_response,
+                data: data.data,
+                reasoning: currentReasoning,
+                timestamp: new Date(),
+              };
+              setMessages((prev) => [...prev, assistantMessage]);
+              setCurrentReasoning([]);
+            } else if (data.type === 'error') {
+              throw new Error(data.message);
+            }
+          }
+        }
+      }
     } catch (error) {
       const errorMessage = {
         role: 'assistant',
-        content: error.response?.data?.detail || 
-                 'Oops! I\'m having trouble connecting. Please make sure the backend server is running on http://localhost:8000',
+        content: error.message || 'Oops! I\'m having trouble connecting. Please make sure the backend server is running on http://localhost:8000',
         isError: true,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
+      setCurrentReasoning([]);
     } finally {
       setIsLoading(false);
+      setIsThinkingComplete(false);
     }
   };
 
@@ -97,11 +146,17 @@ function ChatInterface() {
             <MessageBubble key={index} message={message} />
           ))}
           {isLoading && (
-            <div className="flex justify-start animate-fadeIn">
-              <div className="bg-white/20 backdrop-blur-md rounded-2xl px-5 py-4 border border-white/30">
-                <LoadingDots />
+            <>
+              <ThinkingDropdown 
+                reasoningSteps={currentReasoning} 
+                isComplete={isThinkingComplete} 
+              />
+              <div className="flex justify-start animate-fadeIn">
+                <div className="bg-white/20 backdrop-blur-md rounded-2xl px-5 py-4 border border-white/30">
+                  <LoadingDots />
+                </div>
               </div>
-            </div>
+            </>
           )}
           <div ref={messagesEndRef} />
         </div>

@@ -43,15 +43,22 @@ class LangGraphTourismAgent:
         self.weather_repo = WeatherRepo()
         self.places_repo = PlacesRepo()
         self.graph = self._build_graph()
+        self.reasoning_callback = None  # For streaming reasoning
     
-    def _add_reasoning(self, state: TourismState, agent: str, action: str, reason: str) -> list[dict]:
-        """Helper to add reasoning step to trace"""
+    async def _add_reasoning(self, state: TourismState, agent: str, action: str, reason: str) -> list[dict]:
+        """Helper to add reasoning step to trace and optionally stream it"""
         trace = state.get("reasoning_trace") or []
-        trace.append({
+        step = {
             "agent": agent,
             "action": action,
             "reason": reason
-        })
+        }
+        trace.append(step)
+        
+        # If streaming callback is set, send the step immediately
+        if self.reasoning_callback:
+            await self.reasoning_callback(step)
+        
         return trace
     
     # ========== NODE FUNCTIONS ==========
@@ -60,7 +67,7 @@ class LangGraphTourismAgent:
         """Analyze the user query to determine intent and extract location"""
         try:
             # Add reasoning
-            reasoning_trace = self._add_reasoning(
+            reasoning_trace = await self._add_reasoning(
                 state,
                 agent="Query Analyzer",
                 action="Analyzing user query",
@@ -204,7 +211,7 @@ Return ONLY the JSON, no other text."""
         
         try:
             # Add reasoning
-            reasoning_trace = self._add_reasoning(
+            reasoning_trace = await self._add_reasoning(
                 state,
                 agent="Trip Planner",
                 action="Creating multi-day itinerary plan",
@@ -277,7 +284,7 @@ Return ONLY the JSON, no other text."""
         
         try:
             # Add reasoning
-            reasoning_trace = self._add_reasoning(
+            reasoning_trace = await self._add_reasoning(
                 state,
                 agent="Weather Agent",
                 action=f"Fetching current weather for {state['location']}",
@@ -325,7 +332,7 @@ Return ONLY the JSON, no other text."""
         
         try:
             # Add reasoning
-            reasoning_trace = self._add_reasoning(
+            reasoning_trace = await self._add_reasoning(
                 state,
                 agent="Places Agent",
                 action=f"Finding top tourist attractions in {state['location']}",
@@ -367,7 +374,7 @@ Return ONLY the JSON, no other text."""
         """Generate the final response using all gathered information"""
         try:
             # Add reasoning
-            reasoning_trace = self._add_reasoning(
+            reasoning_trace = await self._add_reasoning(
                 state,
                 agent="Response Generator",
                 action="Generating personalized response",
@@ -759,6 +766,29 @@ Just chat naturally - no formal formatting needed."""
                 loggName=inspect.stack()[0]
             )
             raise
+    
+    async def process_query_streaming(self, query: str, conversation_history: list[dict] = None, callback=None) -> dict:
+        """
+        Process query with streaming reasoning updates
+        
+        Args:
+            query: User's tourism question
+            conversation_history: List of previous messages
+            callback: Async function to call with each reasoning step
+            
+        Returns:
+            Same as process_query but streams reasoning via callback
+        """
+        # Set the callback for streaming
+        self.reasoning_callback = callback
+        
+        try:
+            # Process normally - reasoning will stream via callback
+            result = await self.process_query(query, conversation_history)
+            return result
+        finally:
+            # Clear callback after processing
+            self.reasoning_callback = None
 
 
 # Singleton instance
