@@ -44,12 +44,19 @@ async def chat_with_tourism_agent(query: UserQuery):
         from app.models.agent_models import ConversationMessage
         conversation_messages = [ConversationMessage(**msg) for msg in updated_history]
         
+        # Convert reasoning trace and suggestions
+        from app.models.agent_models import ReasoningStep, ProactiveSuggestion
+        reasoning_steps = [ReasoningStep(**step) for step in result.get("reasoning_trace", [])]
+        suggestions = [ProactiveSuggestion(**sug) for sug in result.get("suggestions", [])]
+        
         return AgentResponse(
             location=result["location"],
             weather_info=result["weather_info"],
             places_info=result["places_info"],
             final_response=result["final_response"],
-            conversation_history=conversation_messages
+            conversation_history=conversation_messages,
+            reasoning_trace=reasoning_steps,
+            suggestions=suggestions
         )
     
     except Exception as e:

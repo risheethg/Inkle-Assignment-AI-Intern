@@ -32,6 +32,7 @@ class TourismState(TypedDict):
     travel_tips: str | None  # Additional travel tips for complex queries
     final_response: str | None
     error: str | None
+    reasoning_trace: list[dict] | None  # Track which agents ran and why
 
 
 class LangGraphTourismAgent:
@@ -43,11 +44,29 @@ class LangGraphTourismAgent:
         self.places_repo = PlacesRepo()
         self.graph = self._build_graph()
     
+    def _add_reasoning(self, state: TourismState, agent: str, action: str, reason: str) -> list[dict]:
+        """Helper to add reasoning step to trace"""
+        trace = state.get("reasoning_trace") or []
+        trace.append({
+            "agent": agent,
+            "action": action,
+            "reason": reason
+        })
+        return trace
+    
     # ========== NODE FUNCTIONS ==========
     
     async def analyze_query_node(self, state: TourismState) -> TourismState:
         """Analyze the user query to determine intent and extract location"""
         try:
+            # Add reasoning
+            reasoning_trace = self._add_reasoning(
+                state,
+                agent="Query Analyzer",
+                action="Analyzing user query",
+                reason="Understanding what information the user needs (location, weather, attractions, itinerary planning)"
+            )
+            
             logs.define_logger(
                 level=20,
                 message=f"Analyzing query: {state['query']}",
@@ -148,7 +167,8 @@ Return ONLY the JSON, no other text."""
                 "query_type": query_type,
                 "is_complex_query": is_complex,
                 "execution_plan": None,
-                "travel_tips": None
+                "travel_tips": None,
+                "reasoning_trace": reasoning_trace
             }
             
         except Exception as e:
@@ -183,6 +203,14 @@ Return ONLY the JSON, no other text."""
             return state
         
         try:
+            # Add reasoning
+            reasoning_trace = self._add_reasoning(
+                state,
+                agent="Trip Planner",
+                action="Creating multi-day itinerary plan",
+                reason="Query requires detailed day-by-day planning for multiple days"
+            )
+            
             logs.define_logger(
                 level=20,
                 message=f"Creating execution plan for complex query: {state['query']}",
@@ -248,6 +276,14 @@ Return ONLY the JSON, no other text."""
             return state
         
         try:
+            # Add reasoning
+            reasoning_trace = self._add_reasoning(
+                state,
+                agent="Weather Agent",
+                action=f"Fetching current weather for {state['location']}",
+                reason="User needs weather information for trip planning"
+            )
+            
             logs.define_logger(
                 level=20,
                 message=f"Fetching weather for: {state['location']}",
@@ -272,7 +308,7 @@ Return ONLY the JSON, no other text."""
             precip = weather.precipitation_probability if weather.precipitation_probability else 0
             weather_text = f"In {state['location']} it's currently {weather.temperature}°C with a {precip:.1f}% chance of rain."
             
-            return {**state, "weather_info": weather_text}
+            return {**state, "weather_info": weather_text, "reasoning_trace": reasoning_trace}
             
         except Exception as e:
             logs.define_logger(
@@ -288,6 +324,14 @@ Return ONLY the JSON, no other text."""
             return state
         
         try:
+            # Add reasoning
+            reasoning_trace = self._add_reasoning(
+                state,
+                agent="Places Agent",
+                action=f"Finding top tourist attractions in {state['location']}",
+                reason="User wants to know about places to visit and things to do"
+            )
+            
             logs.define_logger(
                 level=20,
                 message=f"Fetching places for: {state['location']}",
@@ -309,7 +353,7 @@ Return ONLY the JSON, no other text."""
             # places is already a list of names
             place_names = places if isinstance(places, list) else []
             
-            return {**state, "places_info": place_names}
+            return {**state, "places_info": place_names, "reasoning_trace": reasoning_trace}
             
         except Exception as e:
             logs.define_logger(
@@ -322,6 +366,14 @@ Return ONLY the JSON, no other text."""
     async def synthesize_node(self, state: TourismState) -> TourismState:
         """Generate the final response using all gathered information"""
         try:
+            # Add reasoning
+            reasoning_trace = self._add_reasoning(
+                state,
+                agent="Response Generator",
+                action="Generating personalized response",
+                reason="Combining all gathered information into a helpful, formatted response for the user"
+            )
+            
             logs.define_logger(
                 level=20,
                 message="Synthesizing final response",
@@ -531,7 +583,7 @@ Just chat naturally - no formal formatting needed."""
                 )
                 return {**state, "final_response": "I apologize, but I couldn't generate a response. Please try again."}
             
-            return {**state, "final_response": response.strip()}
+            return {**state, "final_response": response.strip(), "reasoning_trace": reasoning_trace}
             
         except Exception as e:
             logs.define_logger(
@@ -563,6 +615,54 @@ Just chat naturally - no formal formatting needed."""
         
         # General queries skip data fetching
         return "synthesize"
+    
+    def _generate_suggestions(self, state: TourismState) -> list[dict]:
+        """Generate proactive follow-up suggestions based on the query and response"""
+        suggestions = []
+        location = state.get("location", "this location")
+        query_type = state.get("query_type", "simple")
+        is_complex = state.get("is_complex_query", False)
+        has_weather = state.get("weather_info") is not None
+        has_places = state.get("places_info") and len(state["places_info"]) > 0
+        
+        # Suggest based on what data we have and what's missing
+        if location and location != "Unknown":
+            if not has_weather:
+                suggestions.append({
+                    "text": f"🌤️ Check current weather in {location}",
+                    "query": f"What's the weather in {location}?"
+                })
+            
+            if not has_places:
+                suggestions.append({
+                    "text": f"📍 Discover top attractions in {location}",
+                    "query": f"What places should I visit in {location}?"
+                })
+            
+            if has_weather and has_places and not is_complex:
+                suggestions.append({
+                    "text": f"🗓️ Plan a multi-day trip to {location}",
+                    "query": f"Help me plan 3 days in {location}"
+                })
+            
+            if is_complex:
+                suggestions.append({
+                    "text": f"🍽️ Find best restaurants in {location}",
+                    "query": f"What are the best restaurants in {location}?"
+                })
+                suggestions.append({
+                    "text": f"🏨 Get accommodation tips",
+                    "query": f"Where should I stay in {location}?"
+                })
+        
+        # Generic helpful suggestions
+        if not suggestions:
+            suggestions.append({
+                "text": "🌍 Explore another destination",
+                "query": "What are popular travel destinations in Europe?"
+            })
+        
+        return suggestions[:3]  # Limit to 3 suggestions
     
     # ========== GRAPH CONSTRUCTION ==========
     
@@ -632,18 +732,24 @@ Just chat naturally - no formal formatting needed."""
                 "error": None,
                 "is_complex_query": False,
                 "execution_plan": None,
-                "travel_tips": None
+                "travel_tips": None,
+                "reasoning_trace": []
             }
             
             # Run the graph
             final_state = await self.graph.ainvoke(initial_state)
             
-            # Return structured response
+            # Generate proactive suggestions
+            suggestions = self._generate_suggestions(final_state)
+            
+            # Return structured response with reasoning and suggestions
             return {
                 "location": final_state.get("location") or "Unknown",
                 "weather_info": final_state.get("weather_info"),
                 "places_info": final_state.get("places_info") or [],
-                "final_response": final_state.get("final_response") or "I couldn't process your request."
+                "final_response": final_state.get("final_response") or "I couldn't process your request.",
+                "reasoning_trace": final_state.get("reasoning_trace") or [],
+                "suggestions": suggestions
             }
             
         except Exception as e:
