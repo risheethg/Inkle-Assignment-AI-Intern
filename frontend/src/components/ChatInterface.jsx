@@ -138,10 +138,10 @@ function ChatInterface() {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
+    <div className="w-full h-full">
+      <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 overflow-hidden flex flex-col h-full w-full">
         {/* Chat Messages */}
-        <div className="h-[calc(100vh-350px)] min-h-[400px] max-h-[600px] overflow-y-auto p-4 md:p-6 space-y-4 scroll-smooth">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 scroll-smooth">
           {messages.map((message, index) => (
             <MessageBubble 
               key={index} 
