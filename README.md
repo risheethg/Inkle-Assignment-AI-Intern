@@ -2,6 +2,14 @@
 
 An intelligent AI-powered tourism chatbot built with a multi-agent architecture using LangGraph. Get real-time weather information, discover tourist attractions, and receive personalized travel itineraries with transparent reasoning and interactive UI.
 
+## 🌐 Live Demo
+
+- **Frontend**: [https://inkle-assignment-ai-intern-nu.vercel.app](https://inkle-assignment-ai-intern-nu.vercel.app)
+- **Backend API**: [https://inkle-assignment-ai-intern-5pk5.onrender.com](https://inkle-assignment-ai-intern-5pk5.onrender.com)
+- **API Documentation**: [https://inkle-assignment-ai-intern-5pk5.onrender.com/docs](https://inkle-assignment-ai-intern-5pk5.onrender.com/docs)
+
+> **Note**: The backend is hosted on Render's free tier, which spins down after 15 minutes of inactivity. The first request after inactivity may take 30-50 seconds to wake up the service.
+
 ## Project Overview
 
 This project implements an **Advanced Multi-Agent Architecture with LangGraph** where:
@@ -607,6 +615,37 @@ For detailed troubleshooting, see [TESTING_GUIDE.md](TESTING_GUIDE.md).
 - [ ] Social sharing of itineraries
 - [ ] Collaborative trip planning
 
+## 🚀 Deployment
+
+### Production Deployment
+
+The application is deployed using:
+- **Frontend**: Vercel (https://inkle-assignment-ai-intern-nu.vercel.app)
+- **Backend**: Render (https://inkle-assignment-ai-intern-5pk5.onrender.com)
+
+### Deployment Guide
+
+For detailed deployment instructions to Vercel and Render, see [DEPLOYMENT.md](DEPLOYMENT.md).
+
+**Quick Deploy:**
+
+1. **Backend (Render)**:
+   - Connect your GitHub repo
+   - Set environment variables (AI_PROVIDER, API keys)
+   - Deploy from `hosting` branch
+
+2. **Frontend (Vercel)**:
+   - Connect your GitHub repo
+   - Set root directory to `frontend`
+   - Add `VITE_API_URL` environment variable
+   - Deploy from `hosting` branch
+
+### Free Tier Limitations
+
+- **Render**: Service sleeps after 15 min inactivity (30-50s cold start)
+- **Vercel**: 100 GB bandwidth/month
+- Consider using [UptimeRobot](https://uptimerobot.com) to keep backend warm
+
 ## 📄 License
 
 This project is part of the Inkle AI Intern Assignment.
@@ -616,11 +655,14 @@ This project is part of the Inkle AI Intern Assignment.
 **Risheeth G**
 - GitHub: [@risheethg](https://github.com/risheethg)
 - Project: [Inkle-Assignment-AI-Intern](https://github.com/risheethg/Inkle-Assignment-AI-Intern)
+- Live Demo: [TravelMate AI](https://inkle-assignment-ai-intern-nu.vercel.app)
 
 ## 🙏 Acknowledgments
 
 - **LangGraph** by LangChain for state machine orchestration
 - **Open-Meteo** for free weather API
+- **Vercel** for frontend hosting
+- **Render** for backend hosting
 - **OpenStreetMap** and **Overpass API** for location data
 - **FastAPI** for excellent async web framework
 - **React** and **Vite** for modern frontend tooling
