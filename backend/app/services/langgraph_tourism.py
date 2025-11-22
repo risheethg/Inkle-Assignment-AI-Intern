@@ -238,40 +238,69 @@ Return ONLY the JSON, no other text."""
             
             context = "\n\n".join(context_parts)
             
-            # Generate friendly response
-            prompt = f"""You are TravelMate, an enthusiastic and helpful travel assistant. Based on the information below, provide a detailed, engaging response.
-
-If there's previous conversation context, acknowledge it naturally (e.g., "About that location you asked about..." or "Following up on Paris...").
+            # Determine if this is a follow-up query or initial query
+            has_history = state.get('conversation_history') and len(state['conversation_history']) > 0
+            has_weather = state.get("weather_info") is not None
+            has_places = state.get("places_info") and len(state["places_info"]) > 0
+            
+            # Build a natural, adaptive prompt
+            if has_history:
+                # Follow-up conversation - be more conversational and brief
+                prompt = f"""You are TravelMate, a friendly and helpful travel assistant having an ongoing conversation.
 
 {context}
 
-Generate a response with this EXACT structure:
+Respond naturally as if continuing a conversation. Keep it concise and conversational.
 
-Hello there! [Location] is a fantastic choice, you're going to have a wonderful time!
+Guidelines:
+- Reference previous context naturally if relevant
+- If providing weather, mention it conversationally (e.g., "It's about 22°C with some rain expected")
+- If listing places, integrate them naturally (e.g., "You might enjoy checking out [place1], [place2], and [place3]")
+- Don't use rigid formatting or bullet points unless you have 4+ attractions
+- Keep the tone warm but not overly enthusiastic
+- End casually (e.g., "Let me know if you'd like more details!" or "Anything else you'd like to know?")
 
-Let's get you up to speed:
+Be helpful but natural - like texting a knowledgeable friend."""
+            else:
+                # Initial query - provide more structured information
+                if has_weather and has_places:
+                    prompt = f"""You are TravelMate, a friendly travel assistant. This is the start of a new conversation.
 
-**Weather:** [Write the weather information here]
+{context}
 
-And speaking of exploring, [Location] has some great spots you might enjoy:
+Provide a helpful, structured response that covers both weather and attractions.
 
-* **[Attraction Name 1]**
-* **[Attraction Name 2]**
-* **[Attraction Name 3]**
-* **[Attraction Name 4]**
-* **[Attraction Name 5]**
+Structure your response like this:
+1. Warm greeting mentioning the location
+2. Weather information in a natural way (e.g., "The weather is looking nice - around 22°C with partly cloudy skies...")
+3. Top attractions listed clearly (use simple formatting like numbered list or bullet points)
+4. Friendly closing
 
-Enjoy your trip to [Location]! Let me know if you need anything else!
+Keep it informative but conversational. Use the attraction names provided without adding descriptions."""
+                elif has_weather:
+                    prompt = f"""You are TravelMate, a friendly travel assistant.
 
-IMPORTANT:
-- Use ONLY the attraction names from the provided list, do NOT add descriptions
-- Keep each attraction on its own line with the * ** ** format
-- Include the weather section with the temperature and precipitation information provided
-- Do not add extra text or explanations for the attractions"""
+{context}
+
+Provide weather information in a natural, conversational way. Be concise and friendly.
+Include the temperature and conditions, then ask if they'd like to know about places to visit."""
+                elif has_places:
+                    prompt = f"""You are TravelMate, a friendly travel assistant.
+
+{context}
+
+Share the top attractions in a clear, friendly way. List them simply (numbered or bulleted).
+Use only the attraction names provided. End with an offer to help with more information."""
+                else:
+                    prompt = f"""You are TravelMate, a friendly travel assistant.
+
+{context}
+
+Respond naturally to the query. Be helpful and conversational."""
 
             response = await ai_client.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.7
+                temperature=0.8 if has_history else 0.7
             )
             
             return {**state, "final_response": response.strip()}
