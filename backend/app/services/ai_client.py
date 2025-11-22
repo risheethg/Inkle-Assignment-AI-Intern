@@ -6,6 +6,8 @@ from typing import List, Dict, Any
 from app.core.config import settings
 from app.core.logger import logs
 import inspect
+import asyncio
+import time
 
 class AIClient:
     def __init__(self):
@@ -33,10 +35,68 @@ class AIClient:
         else:
             raise ValueError(f"Unsupported AI provider: {self.provider}")
     
-    async def chat_completion(self, messages: List[Dict[str, str]], temperature: float = 0.7) -> str:
+    async def chat_completion(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_retries: int = 3) -> str:
         """
-        Send a chat completion request to the AI provider
+        Send a chat completion request to the AI provider with retry logic
         Returns the assistant's response as a string
+        """
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                return await self._chat_completion_impl(messages, temperature)
+            except Exception as e:
+                last_error = e
+                error_str = str(e)
+                
+                # Check if it's a rate limit error (429)
+                if "429" in error_str or "quota" in error_str.lower() or "rate limit" in error_str.lower():
+                    # Extract retry delay from error message if available
+                    retry_delay = 60  # Default 60 seconds
+                    if "retry in" in error_str.lower():
+                        try:
+                            # Try to extract the retry delay (e.g., "retry in 59.92s")
+                            import re
+                            match = re.search(r'retry in (\d+\.?\d*)', error_str.lower())
+                            if match:
+                                retry_delay = float(match.group(1))
+                        except:
+                            pass
+                    
+                    if attempt < max_retries - 1:
+                        logs.define_logger(
+                            level=30,
+                            message=f"Rate limit hit (attempt {attempt + 1}/{max_retries}). Waiting {retry_delay}s before retry...",
+                            loggName=inspect.stack()[0]
+                        )
+                        await asyncio.sleep(retry_delay)
+                        continue
+                
+                # For other errors, use exponential backoff
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt  # 1s, 2s, 4s
+                    logs.define_logger(
+                        level=30,
+                        message=f"Error on attempt {attempt + 1}/{max_retries}: {error_str}. Retrying in {wait_time}s...",
+                        loggName=inspect.stack()[0]
+                    )
+                    await asyncio.sleep(wait_time)
+                else:
+                    logs.define_logger(
+                        level=40,
+                        message=f"All {max_retries} attempts failed: {error_str}",
+                        loggName=inspect.stack()[0]
+                    )
+                    raise
+        
+        # If we exhausted all retries
+        if last_error:
+            raise last_error
+        return ""
+    
+    async def _chat_completion_impl(self, messages: List[Dict[str, str]], temperature: float = 0.7) -> str:
+        """
+        Internal implementation of chat completion
         """
         try:
             if self.provider == "openai":

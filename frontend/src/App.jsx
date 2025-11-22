@@ -1,4 +1,5 @@
 import ChatInterface from './components/ChatInterface';
+import WelcomeModal from './components/WelcomeModal';
 import './App.css';
 
 function App() {
@@ -27,6 +28,8 @@ function App() {
           <ChatInterface />
         </div>
       </div>
+      
+      <WelcomeModal />
     </div>
   );
 }
