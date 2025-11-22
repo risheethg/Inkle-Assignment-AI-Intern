@@ -1,4 +1,4 @@
-function MessageBubble({ message }) {
+function MessageBubble({ message, onSuggestionClick }) {
   const isUser = message.role === 'user';
   const isError = message.isError;
 
@@ -139,20 +139,8 @@ function MessageBubble({ message }) {
                     {message.data.suggestions.map((suggestion, idx) => (
                       <button
                         key={idx}
-                        onClick={() => {
-                          const input = document.querySelector('textarea[placeholder]');
-                          if (input) {
-                            input.value = suggestion.query;
-                            input.focus();
-                            // Trigger form submission
-                            const form = input.closest('form');
-                            if (form) {
-                              const event = new Event('submit', { bubbles: true, cancelable: true });
-                              form.dispatchEvent(event);
-                            }
-                          }
-                        }}
-                        className="w-full text-left bg-white/10 hover:bg-white/20 rounded-lg px-3 py-2 text-sm text-purple-100 hover:text-white transition-all border border-white/20 hover:border-white/40"
+                        onClick={() => onSuggestionClick && onSuggestionClick(suggestion.query)}
+                        className="w-full text-left bg-white/10 hover:bg-white/20 rounded-lg px-3 py-2 text-sm text-purple-100 hover:text-white transition-all border border-white/20 hover:border-white/40 cursor-pointer"
                       >
                         {suggestion.text}
                       </button>

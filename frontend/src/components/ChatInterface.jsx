@@ -143,7 +143,95 @@ function ChatInterface() {
         {/* Chat Messages */}
         <div className="h-[calc(100vh-350px)] min-h-[400px] max-h-[600px] overflow-y-auto p-4 md:p-6 space-y-4 scroll-smooth">
           {messages.map((message, index) => (
-            <MessageBubble key={index} message={message} />
+            <MessageBubble 
+              key={index} 
+              message={message} 
+              onSuggestionClick={async (query) => {
+                if (isLoading) return;
+                
+                // Create and add user message
+                const userMessage = {
+                  role: 'user',
+                  content: query,
+                  timestamp: new Date(),
+                };
+                
+                setMessages((prev) => [...prev, userMessage]);
+                setIsLoading(true);
+                setCurrentReasoning([]);
+                setIsThinkingComplete(false);
+
+                try {
+                  // Build conversation history
+                  const conversationHistory = messages
+                    .filter(msg => !msg.timestamp || messages.indexOf(msg) > 0)
+                    .map(msg => ({
+                      role: msg.role,
+                      content: msg.content
+                    }));
+
+                  // Use fetch with streaming
+                  const response = await fetch(`${API_BASE_URL}/tourism/chat/stream`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      query: query,
+                      conversation_history: conversationHistory,
+                    }),
+                  });
+
+                  const reader = response.body.getReader();
+                  const decoder = new TextDecoder();
+
+                  let buffer = '';
+                  while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                      if (line.startsWith('data: ')) {
+                        const data = JSON.parse(line.slice(6));
+                        
+                        if (data.type === 'reasoning') {
+                          setCurrentReasoning(prev => [...prev, data.data]);
+                        } else if (data.type === 'complete') {
+                          setIsThinkingComplete(true);
+                          const assistantMessage = {
+                            role: 'assistant',
+                            content: data.data.final_response,
+                            data: data.data,
+                            reasoning: currentReasoning,
+                            timestamp: new Date(),
+                          };
+                          setMessages((prev) => [...prev, assistantMessage]);
+                          setCurrentReasoning([]);
+                        } else if (data.type === 'error') {
+                          throw new Error(data.message);
+                        }
+                      }
+                    }
+                  }
+                } catch (error) {
+                  const errorMessage = {
+                    role: 'assistant',
+                    content: error.message || 'Oops! I\'m having trouble connecting. Please make sure the backend server is running on http://localhost:8000',
+                    isError: true,
+                    timestamp: new Date(),
+                  };
+                  setMessages((prev) => [...prev, errorMessage]);
+                  setCurrentReasoning([]);
+                } finally {
+                  setIsLoading(false);
+                  setIsThinkingComplete(false);
+                }
+              }}
+            />
           ))}
           {isLoading && (
             <>
