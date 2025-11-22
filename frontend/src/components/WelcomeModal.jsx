@@ -165,7 +165,7 @@ function WelcomeModal() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-amber-400 mt-0.5">•</span>
-                <span><strong>Demo Environment:</strong> This is a prototype deployment. For production use, consider upgrading to paid hosting tiers.</span>
+                <span><strong>Demo Environment:</strong> This is a prototype deployment.</span>
               </li>
             </ul>
           </div>
