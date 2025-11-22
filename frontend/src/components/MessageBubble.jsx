@@ -1,6 +1,30 @@
+import { useState } from 'react';
+import InteractivePlace from './InteractivePlace';
+import WeatherCard from './WeatherCard';
+import LocationCard from './LocationCard';
+
 function MessageBubble({ message, onSuggestionClick }) {
   const isUser = message.role === 'user';
   const isError = message.isError;
+  const [copiedText, setCopiedText] = useState(false);
+
+  const handleCopyMessage = () => {
+    navigator.clipboard.writeText(message.content);
+    setCopiedText(true);
+    setTimeout(() => setCopiedText(false), 2000);
+  };
+
+  const handleLearnMore = (place) => {
+    if (onSuggestionClick) {
+      onSuggestionClick(`What can you tell me about ${place}? I'd like to know details about this specific attraction, like opening hours, entry fees, what makes it special, and visitor tips.`);
+    }
+  };
+
+  const handleExploreLocation = (location) => {
+    if (onSuggestionClick) {
+      onSuggestionClick(`What are the top tourist attractions and things to do in ${location}? Please provide a list of must-visit places.`);
+    }
+  };
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
@@ -49,50 +73,65 @@ function MessageBubble({ message, onSuggestionClick }) {
                   .trim()
             }
           </div>
+
+          {/* Copy button for assistant messages */}
+          {!isUser && !isError && (
+            <button
+              onClick={handleCopyMessage}
+              className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-white/10 hover:bg-white/20 rounded-lg text-xs text-purple-200 hover:text-white transition-all border border-white/20 hover:border-white/40"
+            >
+              {copiedText ? (
+                <>
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Copied!</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                  </svg>
+                  <span>Copy</span>
+                </>
+              )}
+            </button>
+          )}
           
           {/* Show structured data for assistant responses */}
           {!isUser && !isError && message.data && (
             <div className="mt-4 pt-4 border-t border-white/20 space-y-3">
               {message.data.location && (
-                <div className="flex items-start gap-2">
-                  <svg className="w-5 h-5 text-purple-300 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <div>
-                    <span className="font-semibold text-purple-200">Location:</span>{' '}
-                    <span className="text-purple-100">{message.data.location}</span>
-                  </div>
-                </div>
+                <LocationCard 
+                  location={message.data.location} 
+                  onExplore={handleExploreLocation}
+                />
               )}
               
               {message.data.weather_info && (
-                <div className="flex items-start gap-2">
-                  <svg className="w-5 h-5 text-blue-300 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
-                  </svg>
-                  <div>
-                    <span className="font-semibold text-blue-200">Weather:</span>{' '}
-                    <span className="text-blue-100">{message.data.weather_info}</span>
-                  </div>
-                </div>
+                <WeatherCard weatherInfo={message.data.weather_info} />
               )}
               
               {message.data.places_info && message.data.places_info.length > 0 && (
-                <div className="flex items-start gap-2">
-                  <svg className="w-5 h-5 text-pink-300 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                  <div className="flex-1">
-                    <span className="font-semibold text-pink-200 block mb-2">Top Attractions:</span>
-                    <div className="space-y-1.5">
-                      {message.data.places_info.map((place, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-pink-100 bg-white/10 rounded-lg px-3 py-1.5">
-                          <span className="text-pink-300 font-bold text-sm">{idx + 1}.</span>
-                          <span>{place}</span>
-                        </div>
-                      ))}
-                    </div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-pink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    <span className="font-semibold text-pink-200">Top Attractions</span>
+                    <span className="text-xs bg-pink-500/30 px-2 py-1 rounded-full text-pink-200">
+                      {message.data.places_info.length} places
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {message.data.places_info.map((place, idx) => (
+                      <InteractivePlace
+                        key={idx}
+                        place={place}
+                        index={idx}
+                        onLearnMore={handleLearnMore}
+                      />
+                    ))}
                   </div>
                 </div>
               )}
@@ -134,15 +173,34 @@ function MessageBubble({ message, onSuggestionClick }) {
               {/* Proactive Suggestions */}
               {message.data.suggestions && message.data.suggestions.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-white/20">
-                  <div className="text-sm font-semibold text-purple-200 mb-2">💡 You might also want to:</div>
-                  <div className="space-y-2">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-6 h-6 rounded-full bg-yellow-500/30 flex items-center justify-center">
+                      <span className="text-sm">💡</span>
+                    </div>
+                    <span className="text-sm font-semibold text-purple-200">You might also want to:</span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
                     {message.data.suggestions.map((suggestion, idx) => (
                       <button
                         key={idx}
                         onClick={() => onSuggestionClick && onSuggestionClick(suggestion.query)}
-                        className="w-full text-left bg-white/10 hover:bg-white/20 rounded-lg px-3 py-2 text-sm text-purple-100 hover:text-white transition-all border border-white/20 hover:border-white/40 cursor-pointer"
+                        className="group relative w-full text-left bg-gradient-to-r from-purple-500/10 to-pink-500/10 hover:from-purple-500/20 hover:to-pink-500/20 rounded-xl px-4 py-3 text-sm text-purple-100 hover:text-white transition-all duration-300 border border-white/20 hover:border-white/40 cursor-pointer overflow-hidden"
                       >
-                        {suggestion.text}
+                        <div className="flex items-center gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white text-xs font-bold shadow-lg group-hover:scale-110 transition-transform">
+                            {idx + 1}
+                          </div>
+                          <span className="flex-1 font-medium">{suggestion.text}</span>
+                          <svg 
+                            className="w-5 h-5 text-purple-300 group-hover:translate-x-1 transition-transform" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                          </svg>
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-400/0 via-pink-400/0 to-purple-400/0 opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
                       </button>
                     ))}
                   </div>

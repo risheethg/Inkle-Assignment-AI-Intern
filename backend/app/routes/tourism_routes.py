@@ -62,7 +62,7 @@ async def chat_with_streaming(query: UserQuery):
             final_data = {
                 'type': 'complete',
                 'data': {
-                    'location': result["location"],
+                    'location': result.get("main_location") or result["location"],  # Use main_location to preserve city context
                     'weather_info': result.get("weather_info"),
                     'places_info': result.get("places_info", []),
                     'final_response': result["final_response"],
@@ -124,7 +124,7 @@ async def chat_with_tourism_agent(query: UserQuery):
         suggestions = [ProactiveSuggestion(**sug) for sug in result.get("suggestions", [])]
         
         return AgentResponse(
-            location=result["location"],
+            location=result.get("main_location") or result["location"],  # Use main_location to preserve city context
             weather_info=result["weather_info"],
             places_info=result["places_info"],
             final_response=result["final_response"],
