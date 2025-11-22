@@ -45,7 +45,13 @@ class AIClient:
                     messages=messages,
                     temperature=temperature
                 )
-                return response.choices[0].message.content
+                content = response.choices[0].message.content
+                logs.define_logger(
+                    level=20,
+                    message=f"OpenAI response received: {len(content) if content else 0} chars",
+                    loggName=inspect.stack()[0]
+                )
+                return content or ""
             
             elif self.provider == "anthropic":
                 # Anthropic uses different format - extract system message if present
@@ -86,24 +92,53 @@ class AIClient:
                 
                 full_prompt = "\n\n".join(prompt_parts)
                 
-                # Use generate_content method
+                logs.define_logger(
+                    level=20,
+                    message=f"Gemini request - prompt length: {len(full_prompt)} chars",
+                    loggName=inspect.stack()[0]
+                )
+                
+                # Use generate_content method (Gemini SDK is synchronous)
                 model = self.genai.GenerativeModel(self.model)
+                
+                # Configure safety settings to allow travel-related content
+                safety_settings = [
+                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+                ]
+                
                 response = model.generate_content(
                     full_prompt,
                     generation_config=self.genai.types.GenerationConfig(
                         temperature=temperature,
-                        max_output_tokens=1024,
-                    )
+                        max_output_tokens=2048,  # Increased for longer responses
+                    ),
+                    safety_settings=safety_settings
                 )
                 
                 # Handle complex responses
                 try:
-                    return response.text
-                except:
+                    text = response.text
+                    logs.define_logger(
+                        level=20,
+                        message=f"Gemini response - length: {len(text)} chars",
+                        loggName=inspect.stack()[0]
+                    )
+                    return text
+                except Exception as extract_error:
+                    logs.define_logger(
+                        level=40,
+                        message=f"Failed to extract Gemini response text: {str(extract_error)}",
+                        loggName=inspect.stack()[0]
+                    )
                     # If .text fails, manually extract text from parts
                     if response.candidates:
                         parts = response.candidates[0].content.parts
-                        return "".join(part.text for part in parts if hasattr(part, 'text'))
+                        extracted = "".join(part.text for part in parts if hasattr(part, 'text'))
+                        if extracted:
+                            return extracted
                     return ""
         
         except Exception as e:

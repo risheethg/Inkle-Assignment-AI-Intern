@@ -25,8 +25,11 @@ class TourismState(TypedDict):
     needs_weather: bool
     needs_places: bool
     query_type: str | None  # 'detailed_places', 'simple', or 'weather_focused'
+    is_complex_query: bool  # Whether query requires multi-step planning
+    execution_plan: list[str] | None  # Steps to execute autonomously
     weather_info: str | None
     places_info: list[str] | None
+    travel_tips: str | None  # Additional travel tips for complex queries
     final_response: str | None
     error: str | None
 
@@ -114,6 +117,10 @@ Return ONLY the JSON, no other text."""
             places_keywords = ['place', 'attraction', 'visit', 'spot', 'thing', 'see', 'do', 'tourist', 'sights', 'landmark']
             asking_for_places = any(keyword in query_lower for keyword in places_keywords)
             
+            # Detect complex queries that need multi-step execution
+            complex_keywords = ['plan', 'trip', 'weekend', 'itinerary', 'schedule', 'visit for', 'days in', 'spend', 'vacation']
+            is_complex = any(keyword in query_lower for keyword in complex_keywords)
+            
             # Force detailed_places format if places are requested
             query_type = analysis.get("query_type", "simple")
             needs_places = analysis.get("needs_places", False) or asking_for_places
@@ -124,7 +131,7 @@ Return ONLY the JSON, no other text."""
             
             logs.define_logger(
                 level=20,
-                message=f"Analysis result - query: '{state['query']}', needs_places: {needs_places}, query_type: {query_type}",
+                message=f"Analysis result - query: '{state['query']}', needs_places: {needs_places}, query_type: {query_type}, is_complex: {is_complex}",
                 loggName=inspect.stack()[0]
             )
             
@@ -133,7 +140,10 @@ Return ONLY the JSON, no other text."""
                 "location": analysis.get("location"),
                 "needs_weather": analysis.get("needs_weather", False),
                 "needs_places": needs_places,
-                "query_type": query_type
+                "query_type": query_type,
+                "is_complex_query": is_complex,
+                "execution_plan": None,
+                "travel_tips": None
             }
             
         except Exception as e:
@@ -156,7 +166,75 @@ Return ONLY the JSON, no other text."""
                 "location": location,
                 "needs_weather": True,
                 "needs_places": True,
-                "query_type": "simple"
+                "query_type": "simple",
+                "is_complex_query": False,
+                "execution_plan": None,
+                "travel_tips": None
+            }
+    
+    async def planning_node(self, state: TourismState) -> TourismState:
+        """Generate autonomous execution plan for complex queries"""
+        if not state.get("is_complex_query"):
+            return state
+        
+        try:
+            logs.define_logger(
+                level=20,
+                message=f"Creating execution plan for complex query: {state['query']}",
+                loggName=inspect.stack()[0]
+            )
+            
+            prompt = f"""You are a travel planning AI. The user asked: "{state['query']}"
+
+Create a concise execution plan that breaks this down into autonomous steps.
+
+Return a JSON object with:
+- execution_plan: array of 3-4 specific steps (e.g., ["Check weather forecast", "Find top 5 attractions", "Suggest day-by-day itinerary"])
+- travel_tips: brief travel tip for this destination (1-2 sentences)
+
+Example: {{"execution_plan": ["Check weather", "Find attractions", "Create itinerary"], "travel_tips": "Book accommodations in advance during peak season."}}
+
+Return ONLY the JSON, no other text."""
+
+            response = await ai_client.chat_completion(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.4
+            )
+            
+            # Parse response
+            cleaned_response = response.strip()
+            if cleaned_response.startswith("```"):
+                lines = cleaned_response.split("\n")
+                cleaned_response = "\n".join([l for l in lines if not l.startswith("```")])
+            
+            plan_data = json.loads(cleaned_response.strip())
+            
+            logs.define_logger(
+                level=20,
+                message=f"Generated plan: {plan_data.get('execution_plan')}",
+                loggName=inspect.stack()[0]
+            )
+            
+            return {
+                **state,
+                "execution_plan": plan_data.get("execution_plan", []),
+                "travel_tips": plan_data.get("travel_tips"),
+                "needs_weather": True,  # Complex queries always need weather
+                "needs_places": True     # And places
+            }
+            
+        except Exception as e:
+            logs.define_logger(
+                level=40,
+                message=f"Error creating plan: {str(e)}",
+                loggName=inspect.stack()[0]
+            )
+            # Fallback plan
+            return {
+                **state,
+                "execution_plan": ["Check weather", "Find top attractions", "Provide recommendations"],
+                "needs_weather": True,
+                "needs_places": True
             }
     
     async def weather_node(self, state: TourismState) -> TourismState:
@@ -275,16 +353,47 @@ Return ONLY the JSON, no other text."""
             query_type = state.get("query_type", "simple")
             has_weather = state.get("weather_info") is not None
             has_places = state.get("places_info") and len(state["places_info"]) > 0
+            is_complex = state.get("is_complex_query", False)
+            execution_plan = state.get("execution_plan")
+            travel_tips = state.get("travel_tips")
             
             # Log for debugging
             logs.define_logger(
                 level=20,
-                message=f"Synthesize - query_type: {query_type}, has_places: {has_places}, has_weather: {has_weather}",
+                message=f"Synthesize - query_type: {query_type}, is_complex: {is_complex}, has_places: {has_places}, has_weather: {has_weather}",
                 loggName=inspect.stack()[0]
             )
             
             # Build response based on query type
-            if query_type == "detailed_places" and has_places:
+            if is_complex and execution_plan:
+                # Complex query with multi-step execution plan
+                plan_items = "\n".join([f"{i+1}. {step}" for i, step in enumerate(execution_plan)])
+                
+                prompt = f"""You are TravelMate, a professional travel planning assistant.
+
+{context}
+
+I've prepared a comprehensive travel plan for the user:
+
+**Execution Plan:**
+{plan_items}
+
+**Travel Tips:**
+{travel_tips or "Pack accordingly and have a great trip!"}
+
+Now, create a warm, detailed response that:
+1. Greets the user enthusiastically about their trip
+2. Presents the weather information clearly
+3. Lists the top attractions in a structured format (use bullet points)
+4. Incorporates the execution plan naturally into the response
+5. Includes the travel tips
+6. Ends with an encouraging message
+
+Be thorough but conversational. This is a full trip plan, so give them everything they need to know!"""
+
+                temperature = 0.6
+                
+            elif query_type == "detailed_places" and has_places:
                 # User explicitly asked for places - use structured format
                 prompt = f"""You are TravelMate, an enthusiastic and helpful travel assistant.
 
@@ -368,6 +477,20 @@ Just chat naturally - no formal formatting needed."""
                 temperature=temperature
             )
             
+            logs.define_logger(
+                level=20,
+                message=f"AI response received - length: {len(response) if response else 0} chars",
+                loggName=inspect.stack()[0]
+            )
+            
+            if not response or not response.strip():
+                logs.define_logger(
+                    level=40,
+                    message="AI returned empty response! Check API key and prompt.",
+                    loggName=inspect.stack()[0]
+                )
+                return {**state, "final_response": "I apologize, but I couldn't generate a response. Please try again."}
+            
             return {**state, "final_response": response.strip()}
             
         except Exception as e:
@@ -380,14 +503,25 @@ Just chat naturally - no formal formatting needed."""
     
     # ========== ROUTING LOGIC ==========
     
-    def should_fetch_data(self, state: TourismState) -> Literal["fetch_data", "synthesize"]:
-        """Determine if we need to fetch weather/places data"""
+    def route_after_analysis(self, state: TourismState) -> Literal["planning", "fetch_data", "synthesize"]:
+        """Determine next step after query analysis"""
         if state.get("error"):
             return "synthesize"
         
+        # Complex queries need multi-step planning
+        if state.get("is_complex_query"):
+            logs.define_logger(
+                level=20,
+                message="Routing to planning node for complex query",
+                loggName=inspect.stack()[0]
+            )
+            return "planning"
+        
+        # Simple data queries fetch directly
         if state.get("needs_weather") or state.get("needs_places"):
             return "fetch_data"
         
+        # General queries skip data fetching
         return "synthesize"
     
     # ========== GRAPH CONSTRUCTION ==========
@@ -400,6 +534,7 @@ Just chat naturally - no formal formatting needed."""
         
         # Add nodes
         workflow.add_node("analyze", self.analyze_query_node)
+        workflow.add_node("planning", self.planning_node)
         workflow.add_node("weather", self.weather_node)
         workflow.add_node("places", self.places_node)
         workflow.add_node("synthesize", self.synthesize_node)
@@ -407,15 +542,19 @@ Just chat naturally - no formal formatting needed."""
         # Set entry point
         workflow.set_entry_point("analyze")
         
-        # Add conditional routing after analysis
+        # Add conditional routing after analysis - complex queries go through planning
         workflow.add_conditional_edges(
             "analyze",
-            self.should_fetch_data,
+            self.route_after_analysis,
             {
-                "fetch_data": "weather",  # Go to weather first
-                "synthesize": "synthesize"  # Skip data fetching
+                "planning": "planning",  # Complex queries need multi-step planning
+                "fetch_data": "weather",  # Simple queries fetch data directly
+                "synthesize": "synthesize"  # General queries skip data fetching
             }
         )
+        
+        # After planning, fetch data
+        workflow.add_edge("planning", "weather")
         
         # Weather and Places can run in parallel conceptually,
         # but we chain them here for simplicity
@@ -450,7 +589,10 @@ Just chat naturally - no formal formatting needed."""
                 "weather_info": None,
                 "places_info": None,
                 "final_response": None,
-                "error": None
+                "error": None,
+                "is_complex_query": False,
+                "execution_plan": None,
+                "travel_tips": None
             }
             
             # Run the graph
