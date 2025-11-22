@@ -40,14 +40,18 @@ class PlacesRepo:
                 
                 if "elements" in data:
                     for element in data["elements"]:
-                        if "tags" in element and "name" in element["tags"]:
-                            name = element["tags"]["name"]
-                            # Avoid duplicates
-                            if name not in seen_names:
-                                places.append(name)
-                                seen_names.add(name)
-                                if len(places) >= limit:
-                                    break
+                        if "tags" in element:
+                            tags = element["tags"]
+                            # Prefer English name, fall back to default name
+                            name = tags.get("name:en") or tags.get("name")
+                            
+                            if name:
+                                # Avoid duplicates
+                                if name not in seen_names:
+                                    places.append(name)
+                                    seen_names.add(name)
+                                    if len(places) >= limit:
+                                        break
                 
                 return places[:limit]
             except Exception as e:
