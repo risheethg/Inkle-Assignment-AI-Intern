@@ -1,11 +1,9 @@
 import inspect
 import logging
 import os
-
 from logging.handlers import RotatingFileHandler
 from fastapi import Request
-
-from app.core.config import settings
+from backend.app.core.config import settings
 
 class LoggerConfig:
     """
@@ -13,20 +11,8 @@ class LoggerConfig:
     """
  
     def __init__(
-        self, env=20, logger_name="MyLogs", log_directory="logger", log_file="logs.log"
+        self, env=settings.LOGGER, logger_name="MyLogs", log_directory="logger", log_file="logs.log"
     ):
-        """
-        Initialize the logger configuration.
- 
-        Args:
-            env (int): Logging level (10: DEBUG, 20: INFO, etc.).
-            logger_name (str): Name of the logger.
-            log_directory (str): Directory to store log files.
-            log_file (str): Name of the log file.
- 
-        Raises:
-            HTTPException: If there is an error creating the logger configuration.
-        """
         try:
             self.logger_name = logger_name
             self.log_directory = os.path.abspath(log_directory)
@@ -42,12 +28,6 @@ class LoggerConfig:
             print(f"Failed to initialize logger: {str(e)}")
  
     def setup_logging(self):
-        """
-        Configure the basic logging settings.
- 
-        Raises:
-            HTTPException: If there is an error setting up logging.
-        """
         try:
             if self.logger.hasHandlers():
                 self.logger.handlers.clear()
@@ -61,12 +41,6 @@ class LoggerConfig:
             print(f"Failed to setup logging: {str(e)}")
  
     def setup_logger(self):
-        """
-        Setup the logger with file and console handlers.
- 
-        Raises:
-            HTTPException: If there is an error setting up the logger.
-        """
         try:
             os.makedirs(self.log_directory, exist_ok=True)
  
@@ -111,30 +85,14 @@ class LoggerConfig:
         body=None,
         response=None,
     ):
-        """
-        Write logs with detailed information.
- 
-        Args:
-            level (int): Logging level.
-            user (dict, optional): User information.
-            request (Request, optional): Request data.
-            loggName (FrameInfo, optional): File and function name.
-            pid (int, optional): Process ID.
-            message (str, optional): Log message.
-            body (dict, optional): Request body.
-            response (optional): Response data.
- 
-        Raises:
-            HTTPException: If there is an error writing logs.
-        """
         try:
-           
             log_parts = {
                 "IP": f"{request.client.host}" if request else None,
                 "URL": f"{request.method} {request.url}" if request else None,
                 "MESSAGE": message,
                 "PID": str(pid) if pid is not None else None,
-                "FILE": f"{loggName[1]}:{loggName[3]}" if loggName else None,
+                # loggName is a tuple/FrameInfo: [1] is filename, [3] is function name
+                "FILE": f"{os.path.basename(loggName[1])}:{loggName[3]}" if loggName else None,
                 "BODY": str(body) if body is not None else None,
                 "RESPONSE": str(response) if response is not None else None,
             }
@@ -150,7 +108,7 @@ class LoggerConfig:
 # Usage Example
 logs = LoggerConfig(
     env=settings.LOGGER, 
-    logger_name="APP-BE", 
-    log_directory="logger", 
+    logger_name="AI-TOURISM-BE", 
+    log_directory="logs", 
     log_file="app.log"
 )
