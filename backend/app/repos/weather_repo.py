@@ -1,9 +1,8 @@
 import httpx
 import inspect
-from backend.app.core.config import settings
-from backend.app.core.logger import logs
-from backend.app.models.base_models import LocationData
-from typing import List, Optional
+from typing import Optional, Dict, Any
+from app.core.config import settings
+from app.core.logger import logs
 
 
 class WeatherRepo:

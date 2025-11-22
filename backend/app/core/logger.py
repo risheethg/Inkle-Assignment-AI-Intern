@@ -3,7 +3,7 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 from fastapi import Request
-from backend.app.core.config import settings
+from app.core.config import settings
 
 class LoggerConfig:
     """

@@ -1,7 +1,8 @@
 import httpx
 import inspect
-from backend.app.core.config import settings
-from backend.app.core.logger import logs
+from typing import List
+from app.core.config import settings
+from app.core.logger import logs
 
 class PlacesRepo:
     async def get_tourist_attractions(self, lat: float, lon: float) -> List[str]:
