@@ -24,6 +24,7 @@ class TourismState(TypedDict):
     location: str | None
     needs_weather: bool
     needs_places: bool
+    query_type: str | None  # 'detailed_places', 'simple', or 'weather_focused'
     weather_info: str | None
     places_info: list[str] | None
     final_response: str | None
@@ -69,8 +70,18 @@ Return a JSON object with:
 - location: The city/place name mentioned or referenced (string or null)
 - needs_weather: true if asking about weather/temperature/climate
 - needs_places: true if asking about places to visit/attractions/things to do
+- query_type: Classify the query as one of:
+  * "detailed_places" - User asks about places/attractions/spots/things to do/visit (keywords: places, attractions, visit, spots, things to do, tourist, sights, landmarks)
+  * "weather_focused" - ONLY if asking JUST about weather with no places mentioned
+  * "simple" - Everything else (general questions, trip planning, casual queries)
 
-Example: {{"location": "Paris", "needs_weather": true, "needs_places": true}}
+IMPORTANT: If needs_places is true, query_type should be "detailed_places"
+
+Examples:
+{{"location": "Paris", "needs_weather": false, "needs_places": true, "query_type": "detailed_places"}}
+{{"location": "Tokyo", "needs_weather": true, "needs_places": false, "query_type": "weather_focused"}}
+{{"location": "London", "needs_weather": true, "needs_places": false, "query_type": "weather_focused"}}
+{{"location": "Barcelona", "needs_weather": false, "needs_places": true, "query_type": "detailed_places"}}
 
 Return ONLY the JSON, no other text."""
 
@@ -98,11 +109,31 @@ Return ONLY the JSON, no other text."""
                 else:
                     raise ValueError("No valid JSON found in response")
             
+            # Keyword-based detection for places queries
+            query_lower = state['query'].lower()
+            places_keywords = ['place', 'attraction', 'visit', 'spot', 'thing', 'see', 'do', 'tourist', 'sights', 'landmark']
+            asking_for_places = any(keyword in query_lower for keyword in places_keywords)
+            
+            # Force detailed_places format if places are requested
+            query_type = analysis.get("query_type", "simple")
+            needs_places = analysis.get("needs_places", False) or asking_for_places
+            
+            # Override query type if asking for places
+            if needs_places:
+                query_type = "detailed_places"
+            
+            logs.define_logger(
+                level=20,
+                message=f"Analysis result - query: '{state['query']}', needs_places: {needs_places}, query_type: {query_type}",
+                loggName=inspect.stack()[0]
+            )
+            
             return {
                 **state,
                 "location": analysis.get("location"),
                 "needs_weather": analysis.get("needs_weather", False),
-                "needs_places": analysis.get("needs_places", False)
+                "needs_places": needs_places,
+                "query_type": query_type
             }
             
         except Exception as e:
@@ -124,7 +155,8 @@ Return ONLY the JSON, no other text."""
                 **state,
                 "location": location,
                 "needs_weather": True,
-                "needs_places": True
+                "needs_places": True,
+                "query_type": "simple"
             }
     
     async def weather_node(self, state: TourismState) -> TourismState:
@@ -188,10 +220,11 @@ Return ONLY the JSON, no other text."""
             places = await self.places_repo.get_tourist_attractions(
                 coords.lat,
                 coords.lon,
-                radius=5000
+                limit=5
             )
             
-            place_names = [place["name"] for place in places[:5]]
+            # places is already a list of names
+            place_names = places if isinstance(places, list) else []
             
             return {**state, "places_info": place_names}
             
@@ -238,69 +271,101 @@ Return ONLY the JSON, no other text."""
             
             context = "\n\n".join(context_parts)
             
-            # Determine if this is a follow-up query or initial query
-            has_history = state.get('conversation_history') and len(state['conversation_history']) > 0
+            # Get query type and data availability
+            query_type = state.get("query_type", "simple")
             has_weather = state.get("weather_info") is not None
             has_places = state.get("places_info") and len(state["places_info"]) > 0
             
-            # Build a natural, adaptive prompt
-            if has_history:
-                # Follow-up conversation - be more conversational and brief
-                prompt = f"""You are TravelMate, a friendly and helpful travel assistant having an ongoing conversation.
+            # Log for debugging
+            logs.define_logger(
+                level=20,
+                message=f"Synthesize - query_type: {query_type}, has_places: {has_places}, has_weather: {has_weather}",
+                loggName=inspect.stack()[0]
+            )
+            
+            # Build response based on query type
+            if query_type == "detailed_places" and has_places:
+                # User explicitly asked for places - use structured format
+                prompt = f"""You are TravelMate, an enthusiastic and helpful travel assistant.
 
 {context}
 
-Respond naturally as if continuing a conversation. Keep it concise and conversational.
+The user specifically asked about places to visit. Generate a response following this EXACT structure:
+
+Hello there! [Location] is a fantastic choice, you're going to have a wonderful time!
+
+Let's get you up to speed:
+
+**Weather:** [Weather description]
+
+And speaking of exploring, [Location] has some great spots you might enjoy:
+
+* **[Attraction Name 1]**
+* **[Attraction Name 2]**
+* **[Attraction Name 3]**
+* **[Attraction Name 4]**
+* **[Attraction Name 5]**
+
+Enjoy your trip to [Location]! Let me know if you need anything else!
+
+CRITICAL RULES - FOLLOW EXACTLY:
+1. List ONLY attraction names - NO descriptions, NO explanations, NO details
+2. Format: * **Name** (nothing else on that line)
+3. Do NOT write about what they are or why they're good
+4. Do NOT add any text after the attraction name
+5. Just the name in bold with the asterisk bullet point
+
+Example of CORRECT format:
+* **Eiffel Tower**
+* **Louvre Museum**
+
+Example of WRONG format (DO NOT DO THIS):
+* **Eiffel Tower** - it's incredible and a great way to warm up!
+
+Remember: JUST THE NAMES, nothing more."""
+
+                temperature = 0.3
+                
+            elif query_type == "weather_focused":
+                # Weather-focused query - natural but informative
+                prompt = f"""You are TravelMate, a friendly travel assistant.
+
+{context}
+
+The user is primarily interested in weather. Respond naturally and conversationally.
 
 Guidelines:
-- Reference previous context naturally if relevant
-- If providing weather, mention it conversationally (e.g., "It's about 22°C with some rain expected")
-- If listing places, integrate them naturally (e.g., "You might enjoy checking out [place1], [place2], and [place3]")
-- Don't use rigid formatting or bullet points unless you have 4+ attractions
-- Keep the tone warm but not overly enthusiastic
-- End casually (e.g., "Let me know if you'd like more details!" or "Anything else you'd like to know?")
+- Focus on weather information, be specific about temperature and conditions
+- Keep it concise and friendly
+- If places are available, mention them briefly and casually
+- End with a helpful offer (e.g., "Would you like to know about places to visit?")
+- Natural language, no rigid formatting"""
 
-Be helpful but natural - like texting a knowledgeable friend."""
+                temperature = 0.8
+                
             else:
-                # Initial query - provide more structured information
-                if has_weather and has_places:
-                    prompt = f"""You are TravelMate, a friendly travel assistant. This is the start of a new conversation.
+                # Simple/casual query - fully natural conversation
+                prompt = f"""You are TravelMate, a friendly travel assistant having a natural conversation.
 
 {context}
 
-Provide a helpful, structured response that covers both weather and attractions.
+Respond in a natural, conversational way - like chatting with a knowledgeable friend.
 
-Structure your response like this:
-1. Warm greeting mentioning the location
-2. Weather information in a natural way (e.g., "The weather is looking nice - around 22°C with partly cloudy skies...")
-3. Top attractions listed clearly (use simple formatting like numbered list or bullet points)
-4. Friendly closing
+Guidelines:
+- Be concise and casual
+- If providing weather, mention it naturally (e.g., "It's around 22°C with some clouds")
+- If listing places, weave them into conversation naturally (e.g., "You should check out the Eiffel Tower, Louvre, and Notre-Dame")
+- No bullet points or rigid structure unless you have many items (5+)
+- Keep it brief and friendly
+- End casually
 
-Keep it informative but conversational. Use the attraction names provided without adding descriptions."""
-                elif has_weather:
-                    prompt = f"""You are TravelMate, a friendly travel assistant.
+Just chat naturally - no formal formatting needed."""
 
-{context}
-
-Provide weather information in a natural, conversational way. Be concise and friendly.
-Include the temperature and conditions, then ask if they'd like to know about places to visit."""
-                elif has_places:
-                    prompt = f"""You are TravelMate, a friendly travel assistant.
-
-{context}
-
-Share the top attractions in a clear, friendly way. List them simply (numbered or bulleted).
-Use only the attraction names provided. End with an offer to help with more information."""
-                else:
-                    prompt = f"""You are TravelMate, a friendly travel assistant.
-
-{context}
-
-Respond naturally to the query. Be helpful and conversational."""
+                temperature = 0.8
 
             response = await ai_client.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.8 if has_history else 0.7
+                temperature=temperature
             )
             
             return {**state, "final_response": response.strip()}
@@ -381,6 +446,7 @@ Respond naturally to the query. Be helpful and conversational."""
                 "location": None,
                 "needs_weather": False,
                 "needs_places": False,
+                "query_type": None,
                 "weather_info": None,
                 "places_info": None,
                 "final_response": None,
