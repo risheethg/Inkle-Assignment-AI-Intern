@@ -20,6 +20,7 @@ import inspect
 class TourismState(TypedDict):
     """Shared state that flows through the graph"""
     query: str
+    conversation_history: list[dict] | None  # Store previous conversation
     location: str | None
     needs_weather: bool
     needs_places: bool
@@ -49,12 +50,23 @@ class LangGraphTourismAgent:
                 loggName=inspect.stack()[0]
             )
             
+            # Build context from conversation history
+            context = ""
+            if state.get('conversation_history') and len(state['conversation_history']) > 0:
+                context = "\n\nPrevious conversation context:\n"
+                for msg in state['conversation_history'][-4:]:  # Last 4 messages for context
+                    role = msg.get('role', 'user')
+                    content = msg.get('content', '')
+                    context += f"{role}: {content}\n"
+            
             prompt = f"""Analyze this tourism query and extract information in JSON format.
+{context}
+Current Query: "{state['query']}"
 
-Query: "{state['query']}"
+Important: If the current query refers to previous context (e.g., "that place", "there", "it"), extract the location from the conversation history above.
 
 Return a JSON object with:
-- location: The city/place name mentioned (string or null)
+- location: The city/place name mentioned or referenced (string or null)
 - needs_weather: true if asking about weather/temperature/climate
 - needs_places: true if asking about places to visit/attractions/things to do
 
@@ -201,7 +213,18 @@ Return ONLY the JSON, no other text."""
             )
             
             # Build context for the AI
-            context_parts = [f"User asked: {state['query']}"]
+            context_parts = []
+            
+            # Add conversation history for context
+            if state.get('conversation_history') and len(state['conversation_history']) > 0:
+                context_parts.append("Previous conversation:")
+                for msg in state['conversation_history'][-4:]:  # Last 4 messages
+                    role = msg.get('role', 'user')
+                    content = msg.get('content', '')[:200]  # Limit length
+                    context_parts.append(f"{role}: {content}")
+                context_parts.append("")  # Empty line separator
+            
+            context_parts.append(f"Current query: {state['query']}")
             
             if state.get("location"):
                 context_parts.append(f"Location: {state['location']}")
@@ -217,6 +240,8 @@ Return ONLY the JSON, no other text."""
             
             # Generate friendly response
             prompt = f"""You are TravelMate, an enthusiastic and helpful travel assistant. Based on the information below, provide a detailed, engaging response.
+
+If there's previous conversation context, acknowledge it naturally (e.g., "About that location you asked about..." or "Following up on Paris...").
 
 {context}
 
@@ -308,12 +333,13 @@ IMPORTANT:
     
     # ========== PUBLIC API ==========
     
-    async def process_query(self, query: str) -> dict:
+    async def process_query(self, query: str, conversation_history: list[dict] = None) -> dict:
         """
         Process a tourism query through the LangGraph workflow
         
         Args:
             query: User's tourism question
+            conversation_history: List of previous messages for context
             
         Returns:
             dict with location, weather_info, places_info, and final_response
@@ -322,6 +348,7 @@ IMPORTANT:
             # Initialize state
             initial_state: TourismState = {
                 "query": query,
+                "conversation_history": conversation_history or [],
                 "location": None,
                 "needs_weather": False,
                 "needs_places": False,

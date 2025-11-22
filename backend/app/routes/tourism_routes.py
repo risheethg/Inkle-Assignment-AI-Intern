@@ -22,18 +22,34 @@ async def chat_with_tourism_agent(query: UserQuery):
     - Weather information (if requested)
     - Tourist attractions (if requested)
     - Natural language response
+    - Updated conversation history
     
     Now powered by LangGraph for better orchestration and parallel execution
+    Session memory enabled for contextual conversations
     """
     try:
+        # Convert conversation history to dict format
+        history = [{"role": msg.role, "content": msg.content} 
+                   for msg in query.conversation_history] if query.conversation_history else []
+        
         # Process query through LangGraph workflow
-        result = await tourism_agent.process_query(query.query)
+        result = await tourism_agent.process_query(query.query, history)
+        
+        # Build updated conversation history
+        updated_history = history.copy()
+        updated_history.append({"role": "user", "content": query.query})
+        updated_history.append({"role": "assistant", "content": result["final_response"]})
+        
+        # Convert back to ConversationMessage objects
+        from app.models.agent_models import ConversationMessage
+        conversation_messages = [ConversationMessage(**msg) for msg in updated_history]
         
         return AgentResponse(
             location=result["location"],
             weather_info=result["weather_info"],
             places_info=result["places_info"],
-            final_response=result["final_response"]
+            final_response=result["final_response"],
+            conversation_history=conversation_messages
         )
     
     except Exception as e:
