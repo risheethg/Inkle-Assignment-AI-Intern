@@ -1,9 +1,10 @@
 function LoadingDots() {
   return (
-    <div className="flex space-x-2">
-      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+    <div className="flex items-center space-x-3">
+      <div className="w-3 h-3 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-bounce shadow-lg" style={{ animationDelay: '0s' }}></div>
+      <div className="w-3 h-3 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-bounce shadow-lg" style={{ animationDelay: '0.15s' }}></div>
+      <div className="w-3 h-3 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-bounce shadow-lg" style={{ animationDelay: '0.3s' }}></div>
+      <span className="text-purple-200 text-sm ml-2">Thinking</span>
     </div>
   );
 }
